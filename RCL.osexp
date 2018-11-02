@@ -1,0 +1,484 @@
+---
+API: 2.1
+OpenSesame: 3.2.5
+Platform: nt
+---
+set width 1024
+set uniform_coordinates yes
+set title "Resetting Capacity Limitations"
+set subject_parity even
+set subject_nr 0
+set start program
+set sound_sample_size -16
+set sound_freq 48000
+set sound_channels 2
+set sound_buf_size 1024
+set sampler_backend legacy
+set round_decimals 2
+set mouse_backend psycho
+set keyboard_backend psycho
+set height 768
+set fullscreen no
+set form_clicks no
+set foreground black
+set font_underline no
+set font_size 32
+set font_italic no
+set font_family mono
+set font_bold no
+set experiment_path "D:/User/OpenSesameProjects/RCL"
+set disable_garbage_collection yes
+set description "A template containing a practice and an experimental phase"
+set coordinates uniform
+set compensation 0
+set color_backend psycho
+set clock_backend psycho
+set canvas_backend psycho
+set bidi yes
+set background grey
+
+define inline_script Version
+	set description "Executes Python code"
+	___run__
+	var.program_version = 0.5
+	
+	""" 
+	Change Log
+	----
+	0.5
+		- Unterstützung auch für andere Backends als PsychoPy eingeführt (show_stim_any_backend, show_stim_psycho_backend)
+			- hierfür Code nach create_stim_list verlagert und Hilfsfunktionen (helper_functions) eingeführt
+		- die zentralen Parameter für die Anzeigedauer der Stimuli ins global_settings_script verlegt
+		- Anzeigefarben für die Stimuli zentral im global_settings_script festgelegt
+		- die Gesamtzeit (SOA) wird ebenfalls in die Log-Datei geschrieben
+		- Bugfix: Es konnten immer noch B, I, O, Q auftauchen
+	----
+	0.4
+		- letter duration auf 15 ms und ISI auf 75 ms (wie bei Shapiro)
+		- Durchlaufzahl: 90 statt 10 (wie bei Shapiro)
+		- Der Begrüßungstext ist jetzt ebenfalls in der 2. Person Singular
+	----
+	0.3
+		- Einführung eines Change Log
+		- Anzeige einer Versionsnummer im Start-Dialog
+		- alle Dialoge jetzt auf Deutsch
+		- Die Ziffern 0 und 1 und die Buchstaben B, I, O und Q werden nicht mehr verwendet.
+		- Die tatsächlichen Anzeigezeiten der Buchstaben werden in die Log-Datei geschrieben
+	"""
+	__end__
+	set _prepare ""
+
+define sketchpad ask_T1
+	set duration 0
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Wie lautet die erste Ziffer?" x=0 y=0 z_index=0
+
+define sketchpad ask_T2
+	set duration 0
+	set description "Displays stimuli"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Wie lautet die zweite Ziffer?" x=0 y=0 z_index=0
+
+define form_multiple_choice choice_of_mode
+	set timeout infinite
+	set spacing 10
+	set question "Bitte wähle:"
+	__options__
+	Experiment
+	Training mit hervorgehobener Ziffer
+	Training ohne hervorgehobener Ziffer
+	__end__
+	set margins "50;50;50;50"
+	set form_var chosen_mode
+	set form_title "RCL-Experiment Version [program_version]"
+	set description "A simple multiple choice item"
+	set button_text Ok
+	set allow_multiple no
+	set advance_immediately yes
+	set _theme gray
+
+define inline_script create_stim_list
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	""" 
+		Creates the list of stimuli including T1 and T2: stim_list[] 
+	"""
+	import random
+	import string
+	
+	# The position of T1 is random between 7 and 15. Note that the first position is
+	# 0, so the position indicates the number of preceding stimuli.
+	var.T1_pos = random.randint(7, 15)
+	# the position of T2 varies between shortSOA and longSOA
+	var.T2_pos = var.T1_pos + var.lag
+	
+	# The maximum lag, i.e. the number of letters that follow T1.
+	var.max_lag = 8
+	# The length of the stream is the position of T1 + the maximum lag + 1. We need
+	# to add 1, because we count starting at 0, so the length of a list is always
+	# 1 larger than its maximum index.
+	var.stream_len = var.T1_pos + var.max_lag + 1
+	
+	# We take all uppercase letters, which have been predefined in the `string`
+	# module. Converting to a `list` creates a list of characters.
+	letters = list(string.ascii_uppercase)
+	letters.remove('B')
+	letters.remove('I')
+	letters.remove('O')
+	letters.remove('Q')
+	# As we remove 4 letters, there are not enough letters left to fill the sequence. Hence we add it twice.
+	letters += letters;
+	
+	# Randomly sample a `stream_len` number of letters
+	stim_list = random.sample(letters, var.stream_len)
+	
+	# T1 is a random digit at position T1_pos
+	var.T1 = "{0}".format(random.randint(2, 9))
+	stim_list[var.T1_pos] = var.T1
+	# T2 is a random digit at position T2_pos
+	var.T2 = "{0}".format(random.randint(2, 9))
+	stim_list[var.T2_pos] = var.T2
+	__end__
+
+define sketchpad end_of_experiment
+	set start_response_interval no
+	set duration keypress
+	set description "A sketchpad notifying the participant that the experiment is finished"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Zum Beenden bitte eine beliebige Taste drücken" x=0 y=0 z_index=0
+
+define loop experiment
+	set source_file ""
+	set source table
+	set skip 0
+	set repeat 1
+	set order sequential
+	set offset no
+	set item block_sequence
+	set description "A loop containing one or more experimental blocks"
+	set cycles 1
+	set continuous no
+	set column_order practice
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 empty_column ""
+	run experimental_sequence
+
+define loop experiment_block_loop
+	set source_file ""
+	set source table
+	set skip 0
+	set repeat 9
+	set order random
+	set offset no
+	set item trial_sequence
+	set description "A single block of trials"
+	set cycles 10
+	set continuous no
+	set column_order ""
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 lag "[shortSOA]"
+	setcycle 1 lag "[shortSOA]"
+	setcycle 2 lag "[shortSOA]"
+	setcycle 3 lag "[shortSOA]"
+	setcycle 4 lag "[shortSOA]"
+	setcycle 5 lag "[longSOA]"
+	setcycle 6 lag "[longSOA]"
+	setcycle 7 lag "[longSOA]"
+	setcycle 8 lag "[longSOA]"
+	setcycle 9 lag "[longSOA]"
+	run trial_sequence
+
+define sequence experimental_sequence
+	set flush_keyboard yes
+	set description "A sequence containing a single block of trials followed by feedback to the participant"
+	run instructions_experiment always
+	run reset_feedback always
+	run experiment_block_loop always
+	run feedback always
+
+define feedback feedback
+	set reset_variables yes
+	set duration keypress
+	set description "Provides feedback to the participant"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Ende des Blocks<br /><br />Die Trefferquote lag bei [acc] %<br /><br />Weiter mit beliebiger Taste..." x=0 y=0 z_index=0
+
+define sketchpad fixation_point
+	set start_response_interval no
+	set duration 955
+	set description "Displays stimuli"
+	draw fixdot color=white show_if=always style=default x=0 y=0 z_index=0
+	draw fixdot color=black show_if=always style=default x=0 y=0 z_index=0
+
+define inline_script global_settings_script
+	set description "Executes Python code"
+	___run__
+	# Evaluate the choice
+	assert(var.chosen_mode != "no") # a choice has to be made
+	
+	if var.chosen_mode == "Experiment":
+		var.isTraining = 0
+	else:
+		var.isTraining = 1
+		
+	if var.chosen_mode == "Training mit hervorgehobener Ziffer":
+		var.isSalient = 1
+	else:
+		var.isSalient = 0
+	
+	# There aer two ways to create the stimuli implemented in this program depending on the chosen backend
+	if var.canvas_backend == "psycho":
+		var.isPsychoBackend = 1
+	else:
+		var.isPsychoBackend = 0
+	__end__
+	___prepare__
+	# global settings for the experiment and training
+	
+	# Duration that letters are shown and inter sitmulus interval ISI 
+	# 	it may be that they must be adjusted to a value compatible with refresh rate)
+	var.letter_dur = 15
+	var.isi = 75
+	
+	# Position of T2 in relation to T2 according to experiment 1
+	# SOA = stimulus onset asynchrony 
+	var.shortSOA = 2
+	var.longSOA = 6
+	
+	# settings for character foreground color
+	var.standardColor = 'white'
+	var.salientColor = 'red'
+	__end__
+
+define inline_script helper_functions
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	import numpy
+	
+	"""
+		Calculating a list of durations from two lists of times and formatting it as a string
+		in:  list1 -> [], list2 -> []
+		return: String of durations -> str
+	"""
+	def calcDuration (list1, list2):
+		time1 = numpy.array(list1)
+		time2 = numpy.array(list2)
+		duration = time2 - time1
+		return(str(duration).replace("\r", "").replace("\n", ""))
+	__end__
+
+define sketchpad instructions_experiment
+	set start_response_interval no
+	set duration keypress
+	set description "A sketchpad containing the instructions for the participant"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="ANLEITUNG<br /><br />In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. <br/><br/>Bitte identifiziere im Anschluss die beiden Zahlen per Tastatureingabe.<br /><br />Weiter mit beliebiger Taste..." x=0 y=-32 z_index=0
+
+define sketchpad instructions_training
+	set duration keypress
+	set description "A sketchpad containing the instructions for the participant"
+	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="TRAININGS-ANLEITUNG<br /><br />In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. <br/>Die zweite Ziffer erscheint immer zwei Zeichen nach der ersten. <br/><br/>Bitte identifiziere im Anschluss die beiden Zahlen per Tastatureingabe.<br /><br />Weiter mit beliebiger Taste..." x=0 y=-32 z_index=0
+
+define logger logger
+	set description "Logs experimental data"
+	set auto_log yes
+
+define sequence program
+	set flush_keyboard yes
+	set description "The main sequence of the experiment"
+	run Version always
+	run choice_of_mode always
+	run global_settings_script always
+	run experiment "[isTraining] = 0"
+	run training "[isTraining] = 1"
+	run end_of_experiment always
+
+define reset_feedback reset_feedback
+	set description "Resets the feedback variables, such as 'avg_rt' and 'acc'"
+
+define keyboard_response response_T1
+	set timeout infinite
+	set flush yes
+	set event_type keypress
+	set duration keypress
+	set description "Collects keyboard responses"
+	set correct_response "[T1]"
+	set allowed_responses "0;1;2;3;4;5;6;7;8;9"
+
+define keyboard_response response_T2
+	set timeout infinite
+	set flush yes
+	set event_type keypress
+	set duration keypress
+	set description "Collects keyboard responses"
+	set correct_response "[T2]"
+	set allowed_responses "0;1;2;3;4;5;6;7;8;9"
+
+define inline_script show_stim_any_backend
+	set description "Executes Python code"
+	___run__
+	"""
+		Creates canvas from the list of stimuli (stim_list) and puts them onto the screen 
+	"""
+	create_canvas()
+	show_canvas()
+	__end__
+	___prepare__
+	import time
+	
+	# Create an empty list for the canvas objects.
+	letter_canvas_list = []
+	# We also need to create a blank canvas to show during the inter-stimulus interval:
+	blank_canvas = canvas()
+	
+	""" 
+		Creates a list of canvas containing stimuli 
+	"""
+	def create_canvas():
+		# prepare a list of canvas
+		for i, stim in enumerate(stim_list):
+			# Create a `canvas` object.
+			letter_canvas = canvas()
+			
+			var.T2_color = var.standardColor 
+	
+			# while training with salient color, T2 is printed in red 
+			if (var.isTraining == 1) and (var.isSalient == 1):
+				if i == var.T2_pos:
+					var.T2_color = var.salientColor
+	
+			letter_canvas.set_fgcolor(var.T2_color)
+	
+			# Draw the letter!
+			letter_canvas.text(stim)
+			# And add the canvas to the list.
+			letter_canvas_list.append(letter_canvas)
+	
+	""" 
+		Puts the canvas onto the screen using the defined timing 
+	"""
+	def show_canvas():
+		# Lists for timestamps
+		l_letter_time = []
+		l_blank_time = []
+		l_total_time = []
+	
+		# Finally putting the canvas onto the screen
+		for letter_canvas in letter_canvas_list:
+			t1 = letter_canvas.show()
+			l_letter_time.append(t1)
+			clock.sleep(var.letter_dur)
+			t2 = blank_canvas.show()
+			l_blank_time.append(t2)
+			clock.sleep(var.isi)
+			l_total_time.append(time.clock())
+	
+		var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
+		var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
+	__end__
+
+define inline_script show_stim_psycho_backend
+	set description "Executes Python code"
+	___run__
+	"""
+		Creates psycho-visuals from the list of stimuli (stim_list) and puts them onto the screen 
+	"""
+	create_stim_visuals()
+	show_stim_visuals()
+	__end__
+	___prepare__
+	import time
+	from psychopy import visual
+	
+	textstim_list = []
+	
+	""" 
+		Creates a list of visuals containing stimuli 
+	"""
+	def create_stim_visuals():
+		# prepare a list of visuals
+		for i, stim in enumerate(stim_list):
+			color = var.standardColor 
+			
+			# while training with salient color, T2 is printed in [salientColor] 
+			if (var.isTraining == 1) and (var.isSalient == 1):
+				if i == var.T2_pos:
+					color = var.salientColor
+	
+			# All stimuli require an psychopy.visual.Window object to be passed as first
+			# argument. In OpenSesame, this object is available as `win`.
+			textstim = visual.TextStim(win, text=stim, color=color)
+			textstim_list.append(textstim)
+	
+	""" 
+		Puts the visuals onto the screen using the defined timing 
+	"""
+	def show_stim_visuals():
+		# Lists for timestamps
+		l_letter_time = []
+		l_blank_time = []
+		l_total_time = []
+	
+		# Finally putting the visuals onto the screen
+		for textstim in textstim_list:
+			textstim.draw()
+			win.flip()
+			l_letter_time.append(time.clock())
+			clock.sleep(var.letter_dur)
+			win.flip()
+			l_blank_time.append(time.clock())
+			clock.sleep(var.isi)
+			l_total_time.append(time.clock())
+	
+		var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
+		var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
+	__end__
+
+define loop training
+	set source_file ""
+	set source table
+	set repeat 1
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 empty_column ""
+	run training_sequence
+
+define loop training_block_loop
+	set source_file ""
+	set source table
+	set repeat 90
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 lag "[shortSOA]"
+	run trial_sequence
+
+define sequence training_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run instructions_training always
+	run reset_feedback always
+	run training_block_loop always
+	run feedback always
+
+define sequence trial_sequence
+	set flush_keyboard yes
+	set description "A single trial"
+	run fixation_point always
+	run helper_functions always
+	run create_stim_list always
+	run show_stim_any_backend "[isPsychoBackend] = 0"
+	run show_stim_psycho_backend "[isPsychoBackend] = 1"
+	run ask_T1 always
+	run response_T1 always
+	run ask_T2 always
+	run response_T2 always
+	run logger always
+
