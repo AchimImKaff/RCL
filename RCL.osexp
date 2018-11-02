@@ -54,7 +54,7 @@ define inline_script Version
 		- Anzeigefarben für die Stimuli zentral im global_settings_script festgelegt
 		- die Gesamtzeit (SOA) wird ebenfalls in die Log-Datei geschrieben
 		- Bugfix: Es konnten immer noch B, I, O, Q auftauchen
-		- Versionierung mit Git via GitHub
+		- Versionierung mit Git via GitHub auf https://github.com/AchimImKaff/RCL
 	----
 	0.4
 		- letter duration auf 15 ms und ISI auf 75 ms (wie bei Shapiro)
