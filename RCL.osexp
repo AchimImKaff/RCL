@@ -48,12 +48,12 @@ define inline_script Version
 	Change Log
 	----
 	0.6
-		- Bugfix: die Preparation-Section wird offenbar unahbhängig von der Bedingung immer ausgeführt. 
+		- Bugfix: die Preparation-Section wird offenbar unabhängig von der Bedingung immer ausgeführt. 
 			Dies führt seltsamerweise Back-Ends <> Psycho zum Umschalten des Grafikmodus 
 			und der Anzeige-Screen verschwand im Hintergrund.
 			Daher wird dort jetzt am Anfang das Backend geprüft (if isPsychoBackend == 0|1)
 		- Da 15ms offenbar für viele Monitore zu kurz ist, 
-			wurde die Anzeige dauer für die Buchstaben auf 33ms (2 Frames) angepasst und ISI auf 66ms
+			wurde die Anzeigedauer für die Buchstaben auf 33ms (2 Frames) angepasst und ISI auf 66ms
 		- Minor Bugfix: Fixation-point: es lagen zwei FP übereinander (weiß und schwarz)
 	0.5
 		- Unterstützung auch für andere Backends als PsychoPy eingeführt (show_stim_any_backend, show_stim_psycho_backend)
