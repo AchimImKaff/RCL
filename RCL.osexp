@@ -26,7 +26,7 @@ set font_size 32
 set font_italic no
 set font_family mono
 set font_bold no
-set experiment_path "D:\\User\\Git"
+set experiment_path "D:/User/OpenSesameProjects/RCL"
 set disable_garbage_collection yes
 set description "A template containing a practice and an experimental phase"
 set coordinates uniform
@@ -47,6 +47,14 @@ define inline_script Version
 	
 	Change Log
 	----
+	0.6
+		- Bugfix: die Preparation-Section wird offenbar unahbhängig von der Bedingung immer ausgeführt. 
+			Dies führt seltsamerweise Back-Ends <> Psycho zum Umschalten des Grafikmodus 
+			und der Anzeige-Screen verschwand im Hintergrund.
+			Daher wird dort jetzt am Anfang das Backend geprüft (if isPsychoBackend == 0|1)
+		- Da 15ms offenbar für viele Monitore zu kurz ist, 
+			wurde die Anzeige dauer für die Buchstaben auf 33ms (2 Frames) angepasst und ISI auf 66ms
+		- Minor Bugfix: Fixation-point: es lagen zwei FP übereinander (weiß und schwarz)
 	0.5
 		- Unterstützung auch für andere Backends als PsychoPy eingeführt (show_stim_any_backend, show_stim_psycho_backend)
 			- hierfür Code nach create_stim_list verlagert und Hilfsfunktionen (helper_functions) eingeführt
@@ -210,7 +218,6 @@ define sketchpad fixation_point
 	set start_response_interval no
 	set duration 955
 	set description "Displays stimuli"
-	draw fixdot color=white show_if=always style=default x=0 y=0 z_index=0
 	draw fixdot color=black show_if=always style=default x=0 y=0 z_index=0
 
 define inline_script global_settings_script
@@ -240,8 +247,8 @@ define inline_script global_settings_script
 	
 	# Duration that letters are shown and inter sitmulus interval ISI 
 	# 	it may be that they must be adjusted to a value compatible with refresh rate)
-	var.letter_dur = 15
-	var.isi = 75
+	var.letter_dur = 33
+	var.isi = 66
 	
 	# Position of T2 in relation to T2 according to experiment 1
 	# SOA = stimulus onset asynchrony 
@@ -327,57 +334,58 @@ define inline_script show_stim_any_backend
 	show_canvas()
 	__end__
 	___prepare__
-	import time
+	if var.isPsychoBackend == 0:
+		import time
 	
-	# Create an empty list for the canvas objects.
-	letter_canvas_list = []
-	# We also need to create a blank canvas to show during the inter-stimulus interval:
-	blank_canvas = canvas()
+		# Create an empty list for the canvas objects.
+		letter_canvas_list = []
+		# We also need to create a blank canvas to show during the inter-stimulus interval:
+		blank_canvas = canvas()
 	
-	""" 
-		Creates a list of canvas containing stimuli 
-	"""
-	def create_canvas():
-		# prepare a list of canvas
-		for i, stim in enumerate(stim_list):
-			# Create a `canvas` object.
-			letter_canvas = canvas()
-			
-			var.T2_color = var.standardColor 
+		""" 
+			Creates a list of canvas containing stimuli 
+		"""
+		def create_canvas():
+			# prepare a list of canvas
+			for i, stim in enumerate(stim_list):
+				# Create a `canvas` object.
+				letter_canvas = canvas()
+				
+				var.T2_color = var.standardColor 
 	
-			# while training with salient color, T2 is printed in red 
-			if (var.isTraining == 1) and (var.isSalient == 1):
-				if i == var.T2_pos:
-					var.T2_color = var.salientColor
+				# while training with salient color, T2 is printed in red 
+				if (var.isTraining == 1) and (var.isSalient == 1):
+					if i == var.T2_pos:
+						var.T2_color = var.salientColor
 	
-			letter_canvas.set_fgcolor(var.T2_color)
+				letter_canvas.set_fgcolor(var.T2_color)
 	
-			# Draw the letter!
-			letter_canvas.text(stim)
-			# And add the canvas to the list.
-			letter_canvas_list.append(letter_canvas)
+				# Draw the letter!
+				letter_canvas.text(stim)
+				# And add the canvas to the list.
+				letter_canvas_list.append(letter_canvas)
 	
-	""" 
-		Puts the canvas onto the screen using the defined timing 
-	"""
-	def show_canvas():
-		# Lists for timestamps
-		l_letter_time = []
-		l_blank_time = []
-		l_total_time = []
+		""" 
+			Puts the canvas onto the screen using the defined timing 
+		"""
+		def show_canvas():
+			# Lists for timestamps
+			l_letter_time = []
+			l_blank_time = []
+			l_total_time = []
 	
-		# Finally putting the canvas onto the screen
-		for letter_canvas in letter_canvas_list:
-			t1 = letter_canvas.show()
-			l_letter_time.append(t1)
-			clock.sleep(var.letter_dur)
-			t2 = blank_canvas.show()
-			l_blank_time.append(t2)
-			clock.sleep(var.isi)
-			l_total_time.append(time.clock())
+			# Finally putting the canvas onto the screen
+			for letter_canvas in letter_canvas_list:
+				t1 = letter_canvas.show()
+				l_letter_time.append(t1)
+				clock.sleep(var.letter_dur)
+				t2 = blank_canvas.show()
+				l_blank_time.append(t2)
+				clock.sleep(var.isi)
+				l_total_time.append(time.clock())
 	
-		var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
-		var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
+			var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
+			var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
 	__end__
 
 define inline_script show_stim_psycho_backend
@@ -390,51 +398,52 @@ define inline_script show_stim_psycho_backend
 	show_stim_visuals()
 	__end__
 	___prepare__
-	import time
-	from psychopy import visual
+	if var.isPsychoBackend == 1:
+		import time
+		from psychopy import visual
 	
-	textstim_list = []
+		textstim_list = []
 	
-	""" 
-		Creates a list of visuals containing stimuli 
-	"""
-	def create_stim_visuals():
-		# prepare a list of visuals
-		for i, stim in enumerate(stim_list):
-			color = var.standardColor 
-			
-			# while training with salient color, T2 is printed in [salientColor] 
-			if (var.isTraining == 1) and (var.isSalient == 1):
-				if i == var.T2_pos:
-					color = var.salientColor
+		""" 
+			Creates a list of visuals containing stimuli 
+		"""
+		def create_stim_visuals():
+			# prepare a list of visuals
+			for i, stim in enumerate(stim_list):
+				color = var.standardColor 
+				
+				# while training with salient color, T2 is printed in [salientColor] 
+				if (var.isTraining == 1) and (var.isSalient == 1):
+					if i == var.T2_pos:
+						color = var.salientColor
 	
-			# All stimuli require an psychopy.visual.Window object to be passed as first
-			# argument. In OpenSesame, this object is available as `win`.
-			textstim = visual.TextStim(win, text=stim, color=color)
-			textstim_list.append(textstim)
+				# All stimuli require an psychopy.visual.Window object to be passed as first
+				# argument. In OpenSesame, this object is available as `win`.
+				textstim = visual.TextStim(win, text=stim, color=color)
+				textstim_list.append(textstim)
 	
-	""" 
-		Puts the visuals onto the screen using the defined timing 
-	"""
-	def show_stim_visuals():
-		# Lists for timestamps
-		l_letter_time = []
-		l_blank_time = []
-		l_total_time = []
+		""" 
+			Puts the visuals onto the screen using the defined timing 
+		"""
+		def show_stim_visuals():
+			# Lists for timestamps
+			l_letter_time = []
+			l_blank_time = []
+			l_total_time = []
 	
-		# Finally putting the visuals onto the screen
-		for textstim in textstim_list:
-			textstim.draw()
-			win.flip()
-			l_letter_time.append(time.clock())
-			clock.sleep(var.letter_dur)
-			win.flip()
-			l_blank_time.append(time.clock())
-			clock.sleep(var.isi)
-			l_total_time.append(time.clock())
+			# Finally putting the visuals onto the screen
+			for textstim in textstim_list:
+				textstim.draw()
+				win.flip()
+				l_letter_time.append(time.clock())
+				clock.sleep(var.letter_dur)
+				win.flip()
+				l_blank_time.append(time.clock())
+				clock.sleep(var.isi)
+				l_total_time.append(time.clock())
 	
-		var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
-		var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
+			var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
+			var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
 	__end__
 
 define loop training
