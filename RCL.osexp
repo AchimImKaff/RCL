@@ -40,13 +40,20 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = 0.6
+	var.program_version = 0.7
 	
 	""" 
 	GitHub: https://github.com/AchimImKaff/RCL
 	
 	Change Log
 	----
+	0.7
+		- Font-Size vergrößert, damit die Stimuli besser zu erkennen sind. 
+			https://github.com/AchimImKaff/RCL/issues/2#issue-377982251
+			Außerdem sollte damit die Größe der Stimuli bei allen Back-Ends gleich sein
+			Die Definition des Font-Size findet sich im global_settings_script --> [fontSize]
+		- Die Anzahl der Durchläufe wird jetzt ebenfalls im global_settings_script fesgelegt --> [numOfTrials]
+		- Die durchschnittlichen Anzeigedauern (average_letter_duration, average_total_duration) werden mit in die Log-Datei geschrieben.
 	0.6
 		- Bugfix: die Preparation-Section wird offenbar unabhängig von der Bedingung immer ausgeführt. 
 			Dies führt seltsamerweise Back-Ends <> Psycho zum Umschalten des Grafikmodus 
@@ -178,7 +185,7 @@ define loop experiment_block_loop
 	set source_file ""
 	set source table
 	set skip 0
-	set repeat 9
+	set repeat "[numOfExperimentRepeats]"
 	set order random
 	set offset no
 	set item trial_sequence
@@ -236,28 +243,35 @@ define inline_script global_settings_script
 	else:
 		var.isSalient = 0
 	
-	# There aer two ways to create the stimuli implemented in this program depending on the chosen backend
+	# There are two ways to create the stimuli implemented in this program depending on the chosen backend
 	if var.canvas_backend == "psycho":
 		var.isPsychoBackend = 1
 	else:
 		var.isPsychoBackend = 0
+	
+	# Each experiment loop has 10 values. So the repeat is divided by 10
+	var.numOfExperimentRepeats = var.numOfTrials // 10
 	__end__
 	___prepare__
 	# global settings for the experiment and training
 	
 	# Duration that letters are shown and inter sitmulus interval ISI 
-	# 	it may be that they must be adjusted to a value compatible with refresh rate)
+	# 	it may be that they must be adjusted to a value compatible with refresh rate of the monitor
 	var.letter_dur = 33
 	var.isi = 66
+	
+	# number of trials used in experiment and training
+	var.numOfTrials = 90  # must be a multiple of 10
 	
 	# Position of T2 in relation to T2 according to experiment 1
 	# SOA = stimulus onset asynchrony 
 	var.shortSOA = 2
 	var.longSOA = 6
 	
-	# settings for character foreground color
+	# settings for character presentation
 	var.standardColor = 'white'
 	var.salientColor = 'red'
+	var.fontSize = 36
 	__end__
 
 define inline_script helper_functions
@@ -269,13 +283,14 @@ define inline_script helper_functions
 	"""
 		Calculating a list of durations from two lists of times and formatting it as a string
 		in:  list1 -> [], list2 -> []
-		return: String of durations -> str
+		return: String of durations -> str, average_duration -> float
 	"""
 	def calcDuration (list1, list2):
 		time1 = numpy.array(list1)
 		time2 = numpy.array(list2)
 		duration = time2 - time1
-		return(str(duration).replace("\r", "").replace("\n", ""))
+		average_duration = numpy.average(duration)
+		return(str(duration).replace("\r", "").replace("\n", ""), average_duration)
 	__end__
 
 define sketchpad instructions_experiment
@@ -361,7 +376,7 @@ define inline_script show_stim_any_backend
 				letter_canvas.set_fgcolor(var.T2_color)
 	
 				# Draw the letter!
-				letter_canvas.text(stim)
+				letter_canvas.text(stim, font_size = var.fontSize)
 				# And add the canvas to the list.
 				letter_canvas_list.append(letter_canvas)
 	
@@ -384,8 +399,8 @@ define inline_script show_stim_any_backend
 				clock.sleep(var.isi)
 				l_total_time.append(time.clock())
 	
-			var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
-			var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
+			(var.actual_letter_duration, var.average_letter_duration)  = calcDuration(l_letter_time, l_blank_time)
+			(var.actual_total_duration, var.average_total_duration) = calcDuration(l_letter_time, l_total_time)
 	__end__
 
 define inline_script show_stim_psycho_backend
@@ -403,7 +418,7 @@ define inline_script show_stim_psycho_backend
 		from psychopy import visual
 	
 		textstim_list = []
-	
+		
 		""" 
 			Creates a list of visuals containing stimuli 
 		"""
@@ -411,7 +426,7 @@ define inline_script show_stim_psycho_backend
 			# prepare a list of visuals
 			for i, stim in enumerate(stim_list):
 				color = var.standardColor 
-				
+							
 				# while training with salient color, T2 is printed in [salientColor] 
 				if (var.isTraining == 1) and (var.isSalient == 1):
 					if i == var.T2_pos:
@@ -419,7 +434,7 @@ define inline_script show_stim_psycho_backend
 	
 				# All stimuli require an psychopy.visual.Window object to be passed as first
 				# argument. In OpenSesame, this object is available as `win`.
-				textstim = visual.TextStim(win, text=stim, color=color)
+				textstim = visual.TextStim(win, text=stim, color=color, height = var.fontSize)
 				textstim_list.append(textstim)
 	
 		""" 
@@ -442,8 +457,8 @@ define inline_script show_stim_psycho_backend
 				clock.sleep(var.isi)
 				l_total_time.append(time.clock())
 	
-			var.actual_letter_duration = calcDuration(l_letter_time, l_blank_time)
-			var.actual_total_duration = calcDuration(l_letter_time, l_total_time)
+			(var.actual_letter_duration, var.average_letter_duration)  = calcDuration(l_letter_time, l_blank_time)
+			(var.actual_total_duration, var.average_total_duration) = calcDuration(l_letter_time, l_total_time)
 	__end__
 
 define loop training
@@ -460,9 +475,8 @@ define loop training
 	run training_sequence
 
 define loop training_block_loop
-	set source_file ""
 	set source table
-	set repeat 90
+	set repeat "[numOfTrials]"
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
@@ -486,8 +500,8 @@ define sequence trial_sequence
 	run fixation_point always
 	run helper_functions always
 	run create_stim_list always
-	run show_stim_any_backend "[isPsychoBackend] = 0"
 	run show_stim_psycho_backend "[isPsychoBackend] = 1"
+	run show_stim_any_backend "[isPsychoBackend] = 0"
 	run ask_T1 always
 	run response_T1 always
 	run ask_T2 always
