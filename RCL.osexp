@@ -45,9 +45,17 @@ define inline_script Version
 	""" 
 	GitHub: https://github.com/AchimImKaff/RCL
 	
-	Change Log
-	----
-	0.7
+	--- General information ---
+	Die Einstellung der globalen Parameter erfolgt im Script global_settings (Prepare-Section).
+	
+	
+	--- Change Log ---
+	1.0 RC2
+		- Support für mehrsprachige Dialoge eingeführt. Die Sprache kann in den global_settings eingestellt werden.
+		-- aktuell werden Deutsch (Languages.DE) und Englisch (Languages.EN) unterstützt
+		- Programm vereinfacht, in dem unnötige Loops entfernt wurden
+	
+	0.7 RC1
 		- Font-Size vergrößert, damit die Stimuli besser zu erkennen sind. 
 		-- https://github.com/AchimImKaff/RCL/issues/2#issue-377982251
 		-- Außerdem sollte damit die Größe der Stimuli bei allen Back-Ends gleich sein
