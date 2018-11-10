@@ -40,7 +40,7 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = 1.0
+	var.program_version = "1.0.1"
 	
 	""" 
 	GitHub: https://github.com/AchimImKaff/RCL
@@ -50,6 +50,9 @@ define inline_script Version
 	
 	
 	--- Change Log ---
+	1.0.1
+		- Anzeigeroutine für die UI-Texte zentralisiert
+		
 	1.0 RC2
 		- Support für mehrsprachige Dialoge eingeführt. Die Sprache kann in den global_settings eingestellt werden.
 		-- aktuell werden Deutsch (Languages.DE) und Englisch (Languages.EN) unterstützt
@@ -97,18 +100,14 @@ define inline_script Version
 define inline_script ask_for_T1
 	set description "Executes Python code"
 	___run__
-	textCanvas = Canvas()
-	textCanvas.text(curLanguage.ask_for_T1_text(), font_size = curLanguage.font_size())
-	textCanvas.show()
+	showText(curLanguage.ask_for_T1_text(), wait_for_key=False)
 	__end__
 	set _prepare ""
 
 define inline_script ask_for_T2
 	set description "Executes Python code"
 	___run__
-	textCanvas = Canvas()
-	textCanvas.text(curLanguage.ask_for_T2_text(), font_size = curLanguage.font_size())
-	textCanvas.show()
+	showText(curLanguage.ask_for_T2_text(), wait_for_key=False)
 	__end__
 	set _prepare ""
 
@@ -172,12 +171,7 @@ define inline_script create_stim_list
 
 define inline_script end_text
 	set description "Executes Python code"
-	___run__
-	textCanvas = Canvas()
-	textCanvas.text(curLanguage.end_text(), font_size = curLanguage.font_size())
-	textCanvas.show()
-	k = Keyboard().get_key()
-	__end__
+	set _run "showText(curLanguage.end_text())"
 	set _prepare ""
 
 define inline_script evaluate_choice
@@ -201,6 +195,10 @@ define inline_script evaluate_choice
 		var.isPsychoBackend = 1
 	else:
 		var.isPsychoBackend = 0
+	
+	# Delete workaround variables
+	del var.com_caption
+	del var.com_selection 
 	__end__
 	set _prepare ""
 
@@ -232,17 +230,13 @@ define loop experiment_block_loop
 
 define inline_script experiment_instructions
 	set description "Executes Python code"
-	___run__
-	textCanvas = Canvas()
-	textCanvas.text(curLanguage.experiment_instruction_text(), font_size = curLanguage.font_size())
-	textCanvas.show()
-	k = Keyboard().get_key()
-	__end__
+	set _run "showText(curLanguage.experiment_instructions_text())"
 	set _prepare ""
 
 define sequence experimental_sequence
 	set flush_keyboard yes
 	set description "A sequence containing a single block of trials followed by feedback to the participant"
+	run helper_functions always
 	run experiment_instructions always
 	run reset_feedback always
 	run experiment_block_loop always
@@ -256,12 +250,7 @@ define sketchpad fixation_point
 
 define inline_script give_feedback
 	set description "Executes Python code"
-	___run__
-	textCanvas = Canvas()
-	textCanvas.text(curLanguage.feedback_text().format(var.acc), font_size = curLanguage.font_size())
-	textCanvas.show()
-	k = Keyboard().get_key()
-	__end__
+	set _run "showText(curLanguage.feedback_text().format(var.acc))"
 	set _prepare ""
 
 define inline_script global_settings
@@ -281,7 +270,7 @@ define inline_script global_settings
 	__end__
 	___prepare__
 	""" 
-		global settings for the experiment and training 
+		global settings for experiment and training 
 	"""
 	# setting UI language
 	# Currently supported languages are:
@@ -289,10 +278,10 @@ define inline_script global_settings
 	#  EN: English (US)
 	var.dialog_language = Languages.DE
 	
-	# Duration that letters are shown and inter sitmulus interval ISI 
+	# Duration that letters are shown 
 	# 	it may be that they must be adjusted to a value compatible with refresh rate of the monitor
 	var.letter_dur = 33
-	var.isi = 66
+	var.isi = 66 	# inter sitmulus interval 
 	
 	# number of trials used in experiment and training
 	var.numOfTrials = 90  # must be a multiple of 10
@@ -315,6 +304,7 @@ define inline_script helper_functions
 	import numpy
 	
 	"""
+	calcDuration 
 		Calculating a list of durations from two lists of times and formatting it as a string
 		in:  list1 -> [], list2 -> []
 		return: String of durations -> str, average_duration -> float
@@ -323,8 +313,23 @@ define inline_script helper_functions
 		time1 = numpy.array(list1)
 		time2 = numpy.array(list2)
 		duration = time2 - time1
-		average_duration = numpy.average(duration)
+		average_duration = int(numpy.average(duration))
 		return(str(duration).replace("\r", "").replace("\n", ""), average_duration)
+	
+	""" 
+	showText 
+		Showing a dialog with text
+		in: text -> str
+			text to be displayed
+		in: wait_for_key -> bool
+			if True the text is displayed until keyboard input	
+	"""
+	def showText(text = "", wait_for_key = True):
+		textCanvas = Canvas()
+		textCanvas.text(text, font_size = curLanguage.font_size())
+		textCanvas.show()
+		if wait_for_key:
+			k = Keyboard().get_key()
 	__end__
 
 define inline_script language_english
@@ -335,7 +340,7 @@ define inline_script language_english
 		def __init__(self):
 			print("Language EN")
 	
-		def experiment_instruction_text(self):
+		def experiment_instructions_text(self):
 			return("""
 				INSTUCTIONS
 				
@@ -346,7 +351,7 @@ define inline_script language_english
 				Press any key to continue...
 				""")
 				
-		def training_instruction_text(self):
+		def training_instructions_text(self):
 			return("""
 				INSTUCTIONS
 				
@@ -396,7 +401,7 @@ define inline_script language_german
 		def __init__(self):
 			print("Language DE")
 	
-		def experiment_instruction_text(self):
+		def experiment_instructions_text(self):
 			return("""
 				ANLEITUNG
 				
@@ -407,7 +412,7 @@ define inline_script language_german
 				Weiter mit beliebiger Taste...
 				""")
 				
-		def training_instruction_text(self):
+		def training_instructions_text(self):
 			return("""
 				TRAININGS-ANLEITUNG
 				
@@ -465,7 +470,8 @@ define inline_script language_support
 		
 		Adding a new language is easy:
 		1. add a new language selector to the Languages enum (e.g. IT = 3)
-		2. add a new class language_<language> derived from ILanguageSupport and overwrite the text-methods. Probibly the easiest way is to copy an existing class like language_german.
+		2. add a new class language_<language> derived from ILanguageSupport and overwrite the text-methods. 
+			Probably the easiest way is to copy an existing class like language_german.
 		3. add a new elif to LanguageFactory.getLanguage returning an instance of this class
 	"""
 	
@@ -484,10 +490,10 @@ define inline_script language_support
 		def font_size(self):
 			return(24)
 				
-		def experiment_instruction_text(self):
+		def experiment_instructions_text(self):
 			return("""""")
 				
-		def training_instruction_text(self):
+		def training_instructions_text(self):
 			return("""""")
 		
 		def choice_of_mode_text_caption(self):
@@ -618,7 +624,6 @@ define inline_script show_stim_any_backend
 			# Lists for timestamps
 			l_letter_time = []
 			l_blank_time = []
-			l_total_time = []
 	
 			# Finally putting the canvas onto the screen
 			for letter_canvas in letter_canvas_list:
@@ -628,10 +633,8 @@ define inline_script show_stim_any_backend
 				t2 = blank_canvas.show()
 				l_blank_time.append(t2)
 				clock.sleep(var.isi)
-				l_total_time.append(time.clock())
 	
 			(var.actual_letter_duration, var.average_letter_duration)  = calcDuration(l_letter_time, l_blank_time)
-			(var.actual_total_duration, var.average_total_duration) = calcDuration(l_letter_time, l_total_time)
 	__end__
 
 define inline_script show_stim_psycho_backend
@@ -707,12 +710,7 @@ define loop training_block_loop
 
 define inline_script training_instructions
 	set description "Executes Python code"
-	___run__
-	textCanvas = Canvas()
-	textCanvas.text(curLanguage.training_instruction_text(), font_size = curLanguage.font_size())
-	textCanvas.show()
-	k = Keyboard().get_key()
-	__end__
+	set _run "showText(curLanguage.training_instructions_text(), wait_for_key=True)"
 	set _prepare ""
 
 define sequence training_sequence
@@ -727,7 +725,6 @@ define sequence trial_sequence
 	set flush_keyboard yes
 	set description "A single trial"
 	run fixation_point always
-	run helper_functions always
 	run create_stim_list always
 	run show_stim_psycho_backend "[isPsychoBackend] = 1"
 	run show_stim_any_backend "[isPsychoBackend] = 0"
