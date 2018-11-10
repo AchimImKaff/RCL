@@ -15,8 +15,8 @@ set sound_channels 2
 set sound_buf_size 1024
 set sampler_backend legacy
 set round_decimals 2
-set mouse_backend psycho
-set keyboard_backend psycho
+set mouse_backend legacy
+set keyboard_backend legacy
 set height 768
 set fullscreen no
 set form_clicks no
@@ -31,16 +31,16 @@ set disable_garbage_collection yes
 set description "A template containing a practice and an experimental phase"
 set coordinates uniform
 set compensation 0
-set color_backend psycho
-set clock_backend psycho
-set canvas_backend psycho
+set color_backend legacy
+set clock_backend legacy
+set canvas_backend legacy
 set bidi yes
 set background grey
 
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = 0.7
+	var.program_version = 1.0
 	
 	""" 
 	GitHub: https://github.com/AchimImKaff/RCL
@@ -49,33 +49,33 @@ define inline_script Version
 	----
 	0.7
 		- Font-Size vergrößert, damit die Stimuli besser zu erkennen sind. 
-			https://github.com/AchimImKaff/RCL/issues/2#issue-377982251
-			Außerdem sollte damit die Größe der Stimuli bei allen Back-Ends gleich sein
-			Die Definition des Font-Size findet sich im global_settings_script --> [fontSize]
-		- Die Anzahl der Durchläufe wird jetzt ebenfalls im global_settings_script fesgelegt --> [numOfTrials]
+		-- https://github.com/AchimImKaff/RCL/issues/2#issue-377982251
+		-- Außerdem sollte damit die Größe der Stimuli bei allen Back-Ends gleich sein
+		-- Die Definition des Font-Size findet sich im global_settings_script --> [fontSize]
+		- Die Anzahl der Durchläufe wird jetzt ebenfalls im global_settings_script festgelegt --> [numOfTrials]
 		- Die durchschnittlichen Anzeigedauern (average_letter_duration, average_total_duration) werden mit in die Log-Datei geschrieben.
+	
 	0.6
 		- Bugfix: die Preparation-Section wird offenbar unabhängig von der Bedingung immer ausgeführt. 
-			Dies führt seltsamerweise Back-Ends <> Psycho zum Umschalten des Grafikmodus 
-			und der Anzeige-Screen verschwand im Hintergrund.
-			Daher wird dort jetzt am Anfang das Backend geprüft (if isPsychoBackend == 0|1)
-		- Da 15ms offenbar für viele Monitore zu kurz ist, 
-			wurde die Anzeigedauer für die Buchstaben auf 33ms (2 Frames) angepasst und ISI auf 66ms
+		-- Dies führte seltsamerweise bei Back-Ends <> Psycho zum Umschalten des Grafikmodus und der Anzeige-Screen verschwand im Hintergrund.
+		-- Daher wird dort jetzt am Anfang das Backend geprüft (if isPsychoBackend == 0|1)
+		- Da 15ms offenbar für viele Monitore zu kurz ist, wurde die Anzeigedauer für die Buchstaben auf 33ms (2 Frames) angepasst und ISI auf 66ms
 		- Minor Bugfix: Fixation-point: es lagen zwei FP übereinander (weiß und schwarz)
+	
 	0.5
 		- Unterstützung auch für andere Backends als PsychoPy eingeführt (show_stim_any_backend, show_stim_psycho_backend)
-			- hierfür Code nach create_stim_list verlagert und Hilfsfunktionen (helper_functions) eingeführt
+		-- hierfür Code nach create_stim_list verlagert und Hilfsfunktionen (helper_functions) eingeführt
 		- die zentralen Parameter für die Anzeigedauer der Stimuli ins global_settings_script verlegt
 		- Anzeigefarben für die Stimuli zentral im global_settings_script festgelegt
 		- die Gesamtzeit (SOA) wird ebenfalls in die Log-Datei geschrieben
 		- Bugfix: Es konnten immer noch B, I, O, Q auftauchen
 		- Versionierung mit Git via GitHub auf https://github.com/AchimImKaff/RCL
-	----
+	
 	0.4
 		- letter duration auf 15 ms und ISI auf 75 ms (wie bei Shapiro)
 		- Durchlaufzahl: 90 statt 10 (wie bei Shapiro)
 		- Der Begrüßungstext ist jetzt ebenfalls in der 2. Person Singular
-	----
+	
 	0.3
 		- Einführung eines Change Log
 		- Anzeige einer Versionsnummer im Start-Dialog
@@ -86,25 +86,29 @@ define inline_script Version
 	__end__
 	set _prepare ""
 
-define sketchpad ask_T1
-	set duration 0
-	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Wie lautet die erste Ziffer?" x=0 y=0 z_index=0
+define inline_script ask_for_T1
+	set description "Executes Python code"
+	___run__
+	textCanvas = Canvas()
+	textCanvas.text(curLanguage.ask_for_T1_text(), font_size = curLanguage.font_size())
+	textCanvas.show()
+	__end__
+	set _prepare ""
 
-define sketchpad ask_T2
-	set duration 0
-	set description "Displays stimuli"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Wie lautet die zweite Ziffer?" x=0 y=0 z_index=0
+define inline_script ask_for_T2
+	set description "Executes Python code"
+	___run__
+	textCanvas = Canvas()
+	textCanvas.text(curLanguage.ask_for_T2_text(), font_size = curLanguage.font_size())
+	textCanvas.show()
+	__end__
+	set _prepare ""
 
 define form_multiple_choice choice_of_mode
 	set timeout infinite
 	set spacing 10
-	set question "Bitte wähle:"
-	__options__
-	Experiment
-	Training mit hervorgehobener Ziffer
-	Training ohne hervorgehobener Ziffer
-	__end__
+	set question "[com_caption]"
+	set options "[com_selection]"
 	set margins "50;50;50;50"
 	set form_var chosen_mode
 	set form_title "RCL-Experiment Version [program_version]"
@@ -158,28 +162,39 @@ define inline_script create_stim_list
 	stim_list[var.T2_pos] = var.T2
 	__end__
 
-define sketchpad end_of_experiment
-	set start_response_interval no
-	set duration keypress
-	set description "A sketchpad notifying the participant that the experiment is finished"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Zum Beenden bitte eine beliebige Taste drücken" x=0 y=0 z_index=0
+define inline_script end_text
+	set description "Executes Python code"
+	___run__
+	textCanvas = Canvas()
+	textCanvas.text(curLanguage.end_text(), font_size = curLanguage.font_size())
+	textCanvas.show()
+	k = Keyboard().get_key()
+	__end__
+	set _prepare ""
 
-define loop experiment
-	set source_file ""
-	set source table
-	set skip 0
-	set repeat 1
-	set order sequential
-	set offset no
-	set item block_sequence
-	set description "A loop containing one or more experimental blocks"
-	set cycles 1
-	set continuous no
-	set column_order practice
-	set break_if_on_first yes
-	set break_if never
-	setcycle 0 empty_column ""
-	run experimental_sequence
+define inline_script evaluate_choice
+	set description "Executes Python code"
+	___run__
+	# Evaluate the choice
+	assert(var.chosen_mode != "no") # a choice has to be made
+	
+	if var.chosen_mode == curLanguage.choice_of_mode_text_experiment():
+		var.isTraining = 0
+	else:
+		var.isTraining = 1
+		
+	if var.chosen_mode == curLanguage.choice_of_mode_text_training_salient():
+		var.isSalient = 1
+	else:
+		var.isSalient = 0
+	
+	# There are two ways to create the stimuli implemented in this program depending on the chosen backend
+	if var.canvas_backend == "psycho":
+		var.isPsychoBackend = 1
+	else:
+		var.isPsychoBackend = 0
+	__end__
+	set _prepare ""
 
 define loop experiment_block_loop
 	set source_file ""
@@ -207,19 +222,23 @@ define loop experiment_block_loop
 	setcycle 9 lag "[longSOA]"
 	run trial_sequence
 
+define inline_script experiment_instructions
+	set description "Executes Python code"
+	___run__
+	textCanvas = Canvas()
+	textCanvas.text(curLanguage.experiment_instruction_text(), font_size = curLanguage.font_size())
+	textCanvas.show()
+	k = Keyboard().get_key()
+	__end__
+	set _prepare ""
+
 define sequence experimental_sequence
 	set flush_keyboard yes
 	set description "A sequence containing a single block of trials followed by feedback to the participant"
-	run instructions_experiment always
+	run experiment_instructions always
 	run reset_feedback always
 	run experiment_block_loop always
-	run feedback always
-
-define feedback feedback
-	set reset_variables yes
-	set duration keypress
-	set description "Provides feedback to the participant"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="Ende des Blocks<br /><br />Die Trefferquote lag bei [acc] %<br /><br />Weiter mit beliebiger Taste..." x=0 y=0 z_index=0
+	run give_feedback always
 
 define sketchpad fixation_point
 	set start_response_interval no
@@ -227,33 +246,40 @@ define sketchpad fixation_point
 	set description "Displays stimuli"
 	draw fixdot color=black show_if=always style=default x=0 y=0 z_index=0
 
-define inline_script global_settings_script
+define inline_script give_feedback
 	set description "Executes Python code"
 	___run__
-	# Evaluate the choice
-	assert(var.chosen_mode != "no") # a choice has to be made
-	
-	if var.chosen_mode == "Experiment":
-		var.isTraining = 0
-	else:
-		var.isTraining = 1
-		
-	if var.chosen_mode == "Training mit hervorgehobener Ziffer":
-		var.isSalient = 1
-	else:
-		var.isSalient = 0
-	
-	# There are two ways to create the stimuli implemented in this program depending on the chosen backend
-	if var.canvas_backend == "psycho":
-		var.isPsychoBackend = 1
-	else:
-		var.isPsychoBackend = 0
-	
+	textCanvas = Canvas()
+	textCanvas.text(curLanguage.feedback_text().format(var.acc), font_size = curLanguage.font_size())
+	textCanvas.show()
+	k = Keyboard().get_key()
+	__end__
+	set _prepare ""
+
+define inline_script global_settings
+	set description "Executes Python code"
+	___run__
 	# Each experiment loop has 10 values. So the repeat is divided by 10
 	var.numOfExperimentRepeats = var.numOfTrials // 10
+	assert(var.numOfExperimentRepeats > 0)
+	
+	# initializing the language
+	languageFactory = LanguageFactory(var.dialog_language)
+	curLanguage = languageFactory.getLanguage()
+	
+	# Just a workaround: standard os-diaglogs can't handle function calls. Therefore we put the strings for the choice_of_mode dialog into global variables.
+	var.com_caption = curLanguage.choice_of_mode_text_caption()
+	var.com_selection = curLanguage.choice_of_mode_text_experiment() + "\n" + curLanguage.choice_of_mode_text_training_salient() + "\n" + curLanguage.choice_of_mode_text_training_nonsalient()
 	__end__
 	___prepare__
-	# global settings for the experiment and training
+	""" 
+		global settings for the experiment and training 
+	"""
+	# setting UI language
+	# Currently supported languages are:
+	#  DE: German
+	#  EN: English (US)
+	var.dialog_language = Languages.DE
 	
 	# Duration that letters are shown and inter sitmulus interval ISI 
 	# 	it may be that they must be adjusted to a value compatible with refresh rate of the monitor
@@ -293,16 +319,211 @@ define inline_script helper_functions
 		return(str(duration).replace("\r", "").replace("\n", ""), average_duration)
 	__end__
 
-define sketchpad instructions_experiment
-	set start_response_interval no
-	set duration keypress
-	set description "A sketchpad containing the instructions for the participant"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="ANLEITUNG<br /><br />In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. <br/><br/>Bitte identifiziere im Anschluss die beiden Zahlen per Tastatureingabe.<br /><br />Weiter mit beliebiger Taste..." x=0 y=-32 z_index=0
+define inline_script language_english
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	class EnglishLanguage(ILanguageSupport):
+		def __init__(self):
+			print("Language EN")
+	
+		def experiment_instruction_text(self):
+			return("""
+				INSTUCTIONS
+				
+				You will see a series of letters and two digts at randomly chosen positions.
+				
+				Afterwards, you will be asked to enter these two digits.
+				
+				Press any key to continue...
+				""")
+				
+		def training_instruction_text(self):
+			return("""
+				INSTUCTIONS
+				
+				You will see a series of letters and two digts at randomly chosen positions.
+				The second digit will always appear two letters after the first one.
+				
+				Afterwards, you will be asked to enter these two digits.
+				
+				Press any key to continue...
+				""")
+		
+		def choice_of_mode_text_caption(self):
+			return("Please select")
+			
+		def choice_of_mode_text_experiment(self):
+			return("Experiment")
+			
+		def choice_of_mode_text_training_salient(self):
+			return("Training with salient digit")
+			
+		def choice_of_mode_text_training_nonsalient(self):
+			return("Training with non-salient digit")
+			
+		def ask_for_T1_text(self):
+			return("Please enter the first digit")
+			
+		def ask_for_T2_text(self):
+			return("Please enter the second digit")
+			
+		def feedback_text(self):
+			return("""
+				End of block
+				Your accuracy was {0}%
+				
+				Press any key to continue...
+				""")
+				
+		def end_text(self):
+			return("Press any key to finish...")
+	__end__
 
-define sketchpad instructions_training
-	set duration keypress
-	set description "A sketchpad containing the instructions for the participant"
-	draw textline center=1 color=black font_bold=no font_family=mono font_italic=no font_size=32 html=yes show_if=always text="TRAININGS-ANLEITUNG<br /><br />In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. <br/>Die zweite Ziffer erscheint immer zwei Zeichen nach der ersten. <br/><br/>Bitte identifiziere im Anschluss die beiden Zahlen per Tastatureingabe.<br /><br />Weiter mit beliebiger Taste..." x=0 y=-32 z_index=0
+define inline_script language_german
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	class GermanLanguage(ILanguageSupport):
+		def __init__(self):
+			print("Language DE")
+	
+		def experiment_instruction_text(self):
+			return("""
+				ANLEITUNG
+				
+				In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. 
+				
+				Bitte identifiziere im Anschluss die beiden Zahlen per Tastatureingabe.
+				
+				Weiter mit beliebiger Taste...
+				""")
+				
+		def training_instruction_text(self):
+			return("""
+				TRAININGS-ANLEITUNG
+				
+				In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. 
+				Die zweite Ziffer erscheint immer zwei Zeichen nach der ersten. 
+				
+				Bitte identifiziere im Anschluss die beiden Zahlen per Tastatureingabe.
+				
+				Weiter mit beliebiger Taste...
+				""")
+		
+		def choice_of_mode_text_caption(self):
+			return("Bitte wählen")
+			
+		def choice_of_mode_text_experiment(self):
+			return("Experiment")
+			
+		def choice_of_mode_text_training_salient(self):
+			return("Training mit hervorgehobener Ziffer")
+			
+		def choice_of_mode_text_training_nonsalient(self):
+			return("Training ohne hervorgehobener Ziffer")
+			
+		def ask_for_T1_text(self):
+			return("Wie lautet die erste Ziffer?")
+			
+		def ask_for_T2_text(self):
+			return("Wie lautet die zweite Ziffer?")
+			
+		def feedback_text(self):
+			return("""
+				Ende des Blocks
+				Die Trefferquote lag bei {0}%
+				
+				Weiter mit beliebiger Taste...
+				""")
+				
+		def end_text(self):
+			return("Zum Beenden eine beliebige Taste drücken...")
+	__end__
+
+define sequence language_settings
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run language_support always
+	run language_german always
+	run language_english always
+
+define inline_script language_support
+	set description "Executes Python code"
+	set _run ""
+	___prepare__
+	"""
+		Module for handling UI language selection.
+		
+		Adding a new language is easy:
+		1. add a new language selector to the Languages enum (e.g. IT = 3)
+		2. add a new class language_<language> derived from ILanguageSupport and overwrite the text-methods. Probibly the easiest way is to copy an existing class like language_german.
+		3. add a new elif to LanguageFactory.getLanguage returning an instance of this class
+	"""
+	
+	from enum import Enum
+	
+	class Languages(Enum):
+		NONE = 0
+		DE = 1
+		EN = 2
+	
+	# base class for language support classes	
+	class ILanguageSupport:
+		def __init__(self):
+			pass
+			
+		def font_size(self):
+			return(24)
+				
+		def experiment_instruction_text(self):
+			return("""""")
+				
+		def training_instruction_text(self):
+			return("""""")
+		
+		def choice_of_mode_text_caption(self):
+			return("")
+			
+		def choice_of_mode_text_experiment(self):
+			return("")
+			
+		def choice_of_mode_text_training_salient(self):
+			return("")
+			
+		def choice_of_mode_text_training_nonsalient(self):
+			return("")
+			
+		def ask_for_T1_text(self):
+			return("")
+			
+		def ask_for_T2_text(self):
+			return("")
+			
+		def feedback_text(self):
+			return("")
+				
+		def end_text(self):
+			return("")
+	
+	class LanguageFactory:
+		__Language = Languages.NONE
+		
+		def __init__(self, language):
+			self.__Language = language
+			
+		def getLanguage(self):
+			assert(self.__Language != Languages.NONE)
+			
+			if self.__Language == Languages.DE:
+				language = GermanLanguage()
+			elif self.__Language == Languages.EN:
+				language = EnglishLanguage()
+			else:
+				raise Exception("Language {0} is not supported".format(self.__Language))
+			
+			return(language)
+	__end__
 
 define logger logger
 	set description "Logs experimental data"
@@ -312,11 +533,13 @@ define sequence program
 	set flush_keyboard yes
 	set description "The main sequence of the experiment"
 	run Version always
+	run language_settings always
+	run global_settings always
 	run choice_of_mode always
-	run global_settings_script always
-	run experiment "[isTraining] = 0"
-	run training "[isTraining] = 1"
-	run end_of_experiment always
+	run evaluate_choice always
+	run experimental_sequence "[isTraining] = 0"
+	run training_sequence "[isTraining] = 1"
+	run end_text always
 
 define reset_feedback reset_feedback
 	set description "Resets the feedback variables, such as 'avg_rt' and 'acc'"
@@ -461,20 +684,8 @@ define inline_script show_stim_psycho_backend
 			(var.actual_total_duration, var.average_total_duration) = calcDuration(l_letter_time, l_total_time)
 	__end__
 
-define loop training
-	set source_file ""
-	set source table
-	set repeat 1
-	set order random
-	set description "Repeatedly runs another item"
-	set cycles 1
-	set continuous no
-	set break_if_on_first yes
-	set break_if never
-	setcycle 0 empty_column ""
-	run training_sequence
-
 define loop training_block_loop
+	set source_file ""
 	set source table
 	set repeat "[numOfTrials]"
 	set order random
@@ -486,13 +697,23 @@ define loop training_block_loop
 	setcycle 0 lag "[shortSOA]"
 	run trial_sequence
 
+define inline_script training_instructions
+	set description "Executes Python code"
+	___run__
+	textCanvas = Canvas()
+	textCanvas.text(curLanguage.training_instruction_text(), font_size = curLanguage.font_size())
+	textCanvas.show()
+	k = Keyboard().get_key()
+	__end__
+	set _prepare ""
+
 define sequence training_sequence
 	set flush_keyboard yes
 	set description "Runs a number of items in sequence"
-	run instructions_training always
+	run training_instructions always
 	run reset_feedback always
 	run training_block_loop always
-	run feedback always
+	run give_feedback always
 
 define sequence trial_sequence
 	set flush_keyboard yes
@@ -502,9 +723,9 @@ define sequence trial_sequence
 	run create_stim_list always
 	run show_stim_psycho_backend "[isPsychoBackend] = 1"
 	run show_stim_any_backend "[isPsychoBackend] = 0"
-	run ask_T1 always
+	run ask_for_T1 always
 	run response_T1 always
-	run ask_T2 always
+	run ask_for_T2 always
 	run response_T2 always
 	run logger always
 
