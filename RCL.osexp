@@ -40,7 +40,7 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = "1.0.1"
+	var.program_version = "1.0.2"
 	
 	""" 
 	GitHub: https://github.com/AchimImKaff/RCL
@@ -50,6 +50,9 @@ define inline_script Version
 	
 	
 	--- Change Log ---
+	1.0.2
+		- Some Refactoring
+		
 	1.0.1
 		- Anzeigeroutine für die UI-Texte zentralisiert
 		
@@ -261,8 +264,7 @@ define inline_script global_settings
 	assert(var.numOfExperimentRepeats > 0)
 	
 	# initializing the language
-	languageFactory = LanguageFactory(var.dialog_language)
-	curLanguage = languageFactory.getLanguage()
+	curLanguage = LanguageFactory(var.dialog_language).getLanguage()
 	
 	# Just a workaround: standard os-diaglogs can't handle function calls. Therefore we put the strings for the choice_of_mode dialog into global variables.
 	var.com_caption = curLanguage.choice_of_mode_text_caption()
@@ -521,22 +523,24 @@ define inline_script language_support
 			return("")
 	
 	class LanguageFactory:
-		__Language = Languages.NONE
+		__languageID = Languages.NONE
+		__languageInstance = None
 		
 		def __init__(self, language):
-			self.__Language = language
+			self.__languageID = language
 			
 		def getLanguage(self):
-			assert(self.__Language != Languages.NONE)
+			assert(self.__languageID != Languages.NONE)
 			
-			if self.__Language == Languages.DE:
-				language = GermanLanguage()
-			elif self.__Language == Languages.EN:
-				language = EnglishLanguage()
-			else:
-				raise Exception("Language {0} is not supported".format(self.__Language))
-			
-			return(language)
+			if self.__languageInstance is None:
+				if self.__languageID == Languages.DE:
+					self.__languageInstance = GermanLanguage()
+				elif self.__languageID == Languages.EN:
+					self.__languageInstance = EnglishLanguage()
+				else:
+					raise Exception("Language {0} is not supported".format(self.__languageID))
+				
+			return(self.__languageInstance)
 	__end__
 
 define logger logger
