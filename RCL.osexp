@@ -26,7 +26,7 @@ set font_size 32
 set font_italic no
 set font_family mono
 set font_bold no
-set experiment_path "D:\\User\\OpenSesameProjects\\RCL"
+set experiment_path "D:/User/OpenSesameProjects/RCL"
 set disable_garbage_collection yes
 set description "A template containing a practice and an experimental phase"
 set coordinates uniform
@@ -51,7 +51,7 @@ define inline_script Version
 	
 	--- Change Log ---
 	1.0.2
-		- Some Refactoring
+		- Den Code etwas gesäubert / refactored
 		
 	1.0.1
 		- Anzeigeroutine für die UI-Texte zentralisiert
@@ -103,14 +103,14 @@ define inline_script Version
 define inline_script ask_for_T1
 	set description "Executes Python code"
 	___run__
-	showText(curLanguage.ask_for_T1_text(), wait_for_key=False)
+	showText(curLanguage.ask_for_T1_text(), wait_for_key = False)
 	__end__
 	set _prepare ""
 
 define inline_script ask_for_T2
 	set description "Executes Python code"
 	___run__
-	showText(curLanguage.ask_for_T2_text(), wait_for_key=False)
+	showText(curLanguage.ask_for_T2_text(), wait_for_key = False)
 	__end__
 	set _prepare ""
 
@@ -305,21 +305,27 @@ define inline_script helper_functions
 	___prepare__
 	import numpy
 	
+	""" cleanString
+		Removing CR/LF from a string
+		in: s -> str
+		return: -> str
 	"""
-	calcDuration 
-		Calculating a list of durations from two lists of times and formatting it as a string
+	def cleanString(s):
+		return(str(s).replace("\r", "").replace("\n", ""))
+	
+	""" calcDuration 
+		Calculating a list of durations from two lists of times and formatting it as a string without CR/LF
 		in:  list1 -> [], list2 -> []
-		return: String of durations -> str, average_duration -> float
+		return: String of durations -> str, average_duration -> int
 	"""
 	def calcDuration (list1, list2):
 		time1 = numpy.array(list1)
 		time2 = numpy.array(list2)
 		duration = time2 - time1
 		average_duration = int(numpy.average(duration))
-		return(str(duration).replace("\r", "").replace("\n", ""), average_duration)
+		return(cleanString(duration), average_duration)
 	
-	""" 
-	showText 
+	""" showText 
 		Showing a dialog with text
 		in: text -> str
 			text to be displayed
@@ -352,7 +358,7 @@ define inline_script language_english
 				
 				Press any key to continue...
 				""")
-				
+			
 		def training_instructions_text(self):
 			return("""
 				INSTUCTIONS
@@ -493,34 +499,34 @@ define inline_script language_support
 			return(24)
 				
 		def experiment_instructions_text(self):
-			return("""""")
+			return("""Missing experiment_instructions_text""")
 				
 		def training_instructions_text(self):
-			return("""""")
+			return("""Missing training_instructions_text""")
 		
 		def choice_of_mode_text_caption(self):
-			return("")
+			return("Missing choice_of_mode_text_caption")
 			
 		def choice_of_mode_text_experiment(self):
-			return("")
+			return("Missing choice_of_mode_text_experiment")
 			
 		def choice_of_mode_text_training_salient(self):
-			return("")
+			return("Missing choice_of_mode_text_training_salient")
 			
 		def choice_of_mode_text_training_nonsalient(self):
-			return("")
+			return("Missing choice_of_mode_text_training_nonsalient")
 			
 		def ask_for_T1_text(self):
-			return("")
+			return("Missing ask_for_T1_text")
 			
 		def ask_for_T2_text(self):
-			return("")
+			return("Missing ask_for_T2_text")
 			
 		def feedback_text(self):
-			return("")
+			return("Missing feedback_text")
 				
 		def end_text(self):
-			return("")
+			return("Missing end_text")
 	
 	class LanguageFactory:
 		__languageID = Languages.NONE
@@ -714,7 +720,7 @@ define loop training_block_loop
 
 define inline_script training_instructions
 	set description "Executes Python code"
-	set _run "showText(curLanguage.training_instructions_text(), wait_for_key=True)"
+	set _run "showText(curLanguage.training_instructions_text())"
 	set _prepare ""
 
 define sequence training_sequence
