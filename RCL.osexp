@@ -40,16 +40,25 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = "1.0.2"
+	var.program_version = "1.1"
 	
 	""" 
-	GitHub: https://github.com/AchimImKaff/RCL
-	
-	--- General information ---
-	Die Einstellung der globalen Parameter erfolgt im Script global_settings (Prepare-Section).
+	GitHub 		
+		Projekt: 		https://github.com/PsychoProjects/RCL
+		Source:			https://github.com/PsychoProjects/RCL/blob/master/RCL.osexp
+		Dokumentation:	https://github.com/PsychoProjects/RCL/wiki
 	
 	
 	--- Change Log ---
+	1.1	
+		- Die Eingabe der Ziffern kann in beliebiger Reihenfolge stattfinden
+		- Größe der Stimuli auf 54 erhöht
+		- Standardfarbe für den salienten Stimulus auf blau geändert
+		- Runden eingeführt
+		-- Die Anzahl der Runden wird in den global_settings festgelegt
+		-- Vor jeder Runde erhält der Proband eine Meldung, in welcher Runde er sich befindet und wie viele Runden noch vor ihm liegen
+		- Die Registrierung neuer Sprachen vereinfacht
+	
 	1.0.2
 		- Den Code etwas gesäubert / refactored
 		
@@ -100,17 +109,20 @@ define inline_script Version
 	__end__
 	set _prepare ""
 
-define inline_script ask_for_T1
+define inline_script ask_for_T1_and_T2
 	set description "Executes Python code"
 	___run__
-	showText(curLanguage.ask_for_T1_text(), wait_for_key = False)
-	__end__
-	set _prepare ""
-
-define inline_script ask_for_T2
-	set description "Executes Python code"
-	___run__
-	showText(curLanguage.ask_for_T2_text(), wait_for_key = False)
+	from sets import Set
+	 
+	allowed_keys = ['1','2','3','4','5','6','7','8','9','0']
+	
+	k1 = showText(curLanguage.ask_for_T1_text(), wait_for_key = True, keylist = allowed_keys)
+	k2 = showText(curLanguage.ask_for_T2_text(), wait_for_key = True, keylist = allowed_keys)
+	
+	s1 = Set([char2int(k1), char2int(k2)])
+	s2 = Set([var.T1, var.T2])
+	
+	var.correct_response = (s1 == s2) 
 	__end__
 	set _prepare ""
 
@@ -209,7 +221,7 @@ define loop experiment_block_loop
 	set source_file ""
 	set source table
 	set skip 0
-	set repeat "[numOfExperimentRepeats]"
+	set repeat 1
 	set order random
 	set offset no
 	set item trial_sequence
@@ -236,13 +248,32 @@ define inline_script experiment_instructions
 	set _run "showText(curLanguage.experiment_instructions_text())"
 	set _prepare ""
 
+define loop experiment_laps_loop
+	set source_file ""
+	set source table
+	set repeat "[num_of_laps]"
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 empty_column ""
+	run experiment_laps_sequence
+
+define sequence experiment_laps_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run lap_info_text always
+	run experiment_block_loop always
+
 define sequence experimental_sequence
 	set flush_keyboard yes
 	set description "A sequence containing a single block of trials followed by feedback to the participant"
-	run helper_functions always
 	run experiment_instructions always
+	run reset_statistics always
 	run reset_feedback always
-	run experiment_block_loop always
+	run experiment_laps_loop always
 	run give_feedback always
 
 define sketchpad fixation_point
@@ -253,18 +284,16 @@ define sketchpad fixation_point
 
 define inline_script give_feedback
 	set description "Executes Python code"
-	set _run "showText(curLanguage.feedback_text().format(var.acc))"
+	___run__
+	showText(curLanguage.feedback_text().format(var.acc))
+	__end__
 	set _prepare ""
 
 define inline_script global_settings
 	set description "Executes Python code"
 	___run__
-	# Each experiment loop has 10 values. So the repeat is divided by 10
-	var.numOfExperimentRepeats = var.numOfTrials // 10
-	assert(var.numOfExperimentRepeats > 0)
-	
 	# initializing the language
-	curLanguage = LanguageFactory(var.dialog_language).getLanguage()
+	curLanguage = LanguageFactory().language(var.dialog_language)
 	
 	# Just a workaround: standard os-diaglogs can't handle function calls. Therefore we put the strings for the choice_of_mode dialog into global variables.
 	var.com_caption = curLanguage.choice_of_mode_text_caption()
@@ -285,8 +314,8 @@ define inline_script global_settings
 	var.letter_dur = 33
 	var.isi = 66 	# inter sitmulus interval 
 	
-	# number of trials used in experiment and training
-	var.numOfTrials = 90  # must be a multiple of 10
+	# number of laps and trials used in experiment and training
+	var.num_of_laps = 9	 	# each lap has 10 trials
 	
 	# Position of T2 in relation to T2 according to experiment 1
 	# SOA = stimulus onset asynchrony 
@@ -295,14 +324,13 @@ define inline_script global_settings
 	
 	# settings for character presentation
 	var.standardColor = 'white'
-	var.salientColor = 'red'
-	var.fontSize = 36
+	var.salientColor = 'blue'
+	var.fontSize = 54
 	__end__
 
 define inline_script helper_functions
 	set description "Executes Python code"
-	set _run ""
-	___prepare__
+	___run__
 	import numpy
 	
 	""" cleanString
@@ -331,14 +359,25 @@ define inline_script helper_functions
 			text to be displayed
 		in: wait_for_key -> bool
 			if True the text is displayed until keyboard input	
+		return: -> str 
+			key pressed by user (if any)
 	"""
-	def showText(text = "", wait_for_key = True):
+	def showText(text = "", wait_for_key = True, keylist=[]):
 		textCanvas = Canvas()
 		textCanvas.text(text, font_size = curLanguage.font_size())
 		textCanvas.show()
 		if wait_for_key:
-			k = Keyboard().get_key()
+			keyboard = Keyboard()
+			keyboard.flush()
+			if keylist != []:
+				keyboard.keylist = keylist
+			s, t = keyboard.get_key()
+			return(s)
+	
+	def char2int(c):
+		return(ord(c)-ord('0'))
 	__end__
+	set _prepare ""
 
 define inline_script language_english
 	set description "Executes Python code"
@@ -371,6 +410,13 @@ define inline_script language_english
 				Press any key to continue...
 				""")
 		
+		def experiment_lap_info_text(self):
+			return("""
+				Lap {0} of {1}
+				
+				Press any key to continue...
+				""")
+	
 		def choice_of_mode_text_caption(self):
 			return("Please select")
 			
@@ -384,10 +430,10 @@ define inline_script language_english
 			return("Training with non-salient digit")
 			
 		def ask_for_T1_text(self):
-			return("Please enter the first digit")
+			return("Please type the digits")
 			
 		def ask_for_T2_text(self):
-			return("Please enter the second digit")
+			return("And the other digit?")
 			
 		def feedback_text(self):
 			return("""
@@ -435,6 +481,13 @@ define inline_script language_german
 		def choice_of_mode_text_caption(self):
 			return("Bitte wählen")
 			
+		def experiment_lap_info_text(self):
+			return("""
+				Runde {0} von {1}
+				
+				Weiter mit beliebiger Taste...
+				""")
+	
 		def choice_of_mode_text_experiment(self):
 			return("Experiment")
 			
@@ -445,10 +498,10 @@ define inline_script language_german
 			return("Training ohne hervorgehobener Ziffer")
 			
 		def ask_for_T1_text(self):
-			return("Wie lautet die erste Ziffer?")
+			return("Bitte gib ein, welche Ziffern du gesehen hast:")
 			
 		def ask_for_T2_text(self):
-			return("Wie lautet die zweite Ziffer?")
+			return("Und welche Ziffer noch?")
 			
 		def feedback_text(self):
 			return("""
@@ -480,7 +533,9 @@ define inline_script language_support
 		1. add a new language selector to the Languages enum (e.g. IT = 3)
 		2. add a new class language_<language> derived from ILanguageSupport and overwrite the text-methods. 
 			Probably the easiest way is to copy an existing class like language_german.
-		3. add a new elif to LanguageFactory.getLanguage returning an instance of this class
+		3. register the new language in LanguageFactory.__init__()
+		
+		See also https://github.com/PsychoProjects/RCL/wiki/Anlegen-einer-neuen-Sprache
 	"""
 	
 	from enum import Enum
@@ -503,6 +558,9 @@ define inline_script language_support
 				
 		def training_instructions_text(self):
 			return("""Missing training_instructions_text""")
+			
+		def experiment_lap_info_text(self):
+			return("""Missing experiment_lap_info_text""")
 		
 		def choice_of_mode_text_caption(self):
 			return("Missing choice_of_mode_text_caption")
@@ -529,25 +587,31 @@ define inline_script language_support
 			return("Missing end_text")
 	
 	class LanguageFactory:
-		__languageID = Languages.NONE
 		__languageInstance = None
+		__languageList = {}
 		
-		def __init__(self, language):
-			self.__languageID = language
+		def __init__(self):
+			self.__register(Languages.DE, GermanLanguage)
+			self.__register(Languages.EN, EnglishLanguage)
 			
-		def getLanguage(self):
-			assert(self.__languageID != Languages.NONE)
+		def __register(self, languageID, language_class):
+			self.__languageList[languageID] = language_class
 			
+		def language(self, languageID = Languages.DE):
 			if self.__languageInstance is None:
-				if self.__languageID == Languages.DE:
-					self.__languageInstance = GermanLanguage()
-				elif self.__languageID == Languages.EN:
-					self.__languageInstance = EnglishLanguage()
-				else:
-					raise Exception("Language {0} is not supported".format(self.__languageID))
+				language_class = self.__languageList[languageID]
+				self.__languageInstance = language_class()
 				
 			return(self.__languageInstance)
 	__end__
+
+define inline_script lap_info_text
+	set description "Executes Python code"
+	___run__
+	var.lap_counter += 1
+	showText(curLanguage.experiment_lap_info_text().format(var.lap_counter, var.num_of_laps))
+	__end__
+	set _prepare ""
 
 define logger logger
 	set description "Logs experimental data"
@@ -561,6 +625,7 @@ define sequence program
 	run global_settings always
 	run choice_of_mode always
 	run evaluate_choice always
+	run helper_functions always
 	run experimental_sequence "[isTraining] = 0"
 	run training_sequence "[isTraining] = 1"
 	run end_text always
@@ -568,23 +633,18 @@ define sequence program
 define reset_feedback reset_feedback
 	set description "Resets the feedback variables, such as 'avg_rt' and 'acc'"
 
-define keyboard_response response_T1
-	set timeout infinite
-	set flush yes
-	set event_type keypress
-	set duration keypress
-	set description "Collects keyboard responses"
-	set correct_response "[T1]"
-	set allowed_responses "0;1;2;3;4;5;6;7;8;9"
-
-define keyboard_response response_T2
-	set timeout infinite
-	set flush yes
-	set event_type keypress
-	set duration keypress
-	set description "Collects keyboard responses"
-	set correct_response "[T2]"
-	set allowed_responses "0;1;2;3;4;5;6;7;8;9"
+define inline_script reset_statistics
+	set description "Executes Python code"
+	___run__
+	# statistics are maintained manually
+	var.acc = 0
+	
+	# resetting the lap-counter
+	var.lap_counter = 0
+	var.count_correct_answers = 0
+	var.count_loops = 0
+	__end__
+	set _prepare ""
 
 define inline_script show_stim_any_backend
 	set description "Executes Python code"
@@ -706,9 +766,8 @@ define inline_script show_stim_psycho_backend
 	__end__
 
 define loop training_block_loop
-	set source_file ""
 	set source table
-	set repeat "[numOfTrials]"
+	set repeat 10
 	set order random
 	set description "Repeatedly runs another item"
 	set cycles 1
@@ -723,12 +782,32 @@ define inline_script training_instructions
 	set _run "showText(curLanguage.training_instructions_text())"
 	set _prepare ""
 
+define loop training_laps_loop
+	set source_file ""
+	set source table
+	set repeat "[num_of_laps]"
+	set order random
+	set description "Repeatedly runs another item"
+	set cycles 1
+	set continuous no
+	set break_if_on_first yes
+	set break_if never
+	setcycle 0 empty_column ""
+	run training_laps_sequence
+
+define sequence training_laps_sequence
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run lap_info_text always
+	run training_block_loop always
+
 define sequence training_sequence
 	set flush_keyboard yes
 	set description "Runs a number of items in sequence"
 	run training_instructions always
+	run reset_statistics always
 	run reset_feedback always
-	run training_block_loop always
+	run training_laps_loop always
 	run give_feedback always
 
 define sequence trial_sequence
@@ -738,9 +817,19 @@ define sequence trial_sequence
 	run create_stim_list always
 	run show_stim_psycho_backend "[isPsychoBackend] = 1"
 	run show_stim_any_backend "[isPsychoBackend] = 0"
-	run ask_for_T1 always
-	run response_T1 always
-	run ask_for_T2 always
-	run response_T2 always
+	run ask_for_T1_and_T2 always
+	run update_statistics always
 	run logger always
+
+define inline_script update_statistics
+	set description "Executes Python code"
+	___run__
+	if var.correct_response == "yes":
+		var.count_correct_answers += 1
+		
+	var.count_loops += 1
+	
+	var.acc = 100.0 * var.count_correct_answers / var.count_loops
+	__end__
+	set _prepare ""
 
