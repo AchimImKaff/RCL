@@ -40,7 +40,7 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = "1.1"
+	var.program_version = "1.1.1"
 	
 	""" 
 	GitHub 		
@@ -50,6 +50,9 @@ define inline_script Version
 	
 	
 	--- Change Log ---
+	1.1.1
+		- Dokumentation der Programmstruktur hinzugefügt: https://github.com/PsychoProjects/RCL/wiki/Programmstruktur
+		
 	1.1	
 		- Die Eingabe der Ziffern kann in beliebiger Reihenfolge stattfinden
 		- Größe der Stimuli auf 54 erhöht
@@ -217,6 +220,15 @@ define inline_script evaluate_choice
 	__end__
 	set _prepare ""
 
+define sequence experiment
+	set flush_keyboard yes
+	set description "A sequence containing a single block of trials followed by feedback to the participant"
+	run experiment_instructions always
+	run reset_statistics always
+	run reset_feedback always
+	run experiment_laps_loop always
+	run give_feedback always
+
 define loop experiment_block_loop
 	set source_file ""
 	set source table
@@ -266,15 +278,6 @@ define sequence experiment_laps_sequence
 	set description "Runs a number of items in sequence"
 	run lap_info_text always
 	run experiment_block_loop always
-
-define sequence experimental_sequence
-	set flush_keyboard yes
-	set description "A sequence containing a single block of trials followed by feedback to the participant"
-	run experiment_instructions always
-	run reset_statistics always
-	run reset_feedback always
-	run experiment_laps_loop always
-	run give_feedback always
 
 define sketchpad fixation_point
 	set start_response_interval no
@@ -617,17 +620,22 @@ define logger logger
 	set description "Logs experimental data"
 	set auto_log yes
 
-define sequence program
+define sequence preparation
 	set flush_keyboard yes
-	set description "The main sequence of the experiment"
-	run Version always
+	set description "Runs a number of items in sequence"
 	run language_settings always
 	run global_settings always
 	run choice_of_mode always
 	run evaluate_choice always
 	run helper_functions always
-	run experimental_sequence "[isTraining] = 0"
-	run training_sequence "[isTraining] = 1"
+
+define sequence program
+	set flush_keyboard yes
+	set description "The main sequence of the experiment"
+	run Version always
+	run preparation always
+	run experiment "[isTraining] = 0"
+	run training "[isTraining] = 1"
 	run end_text always
 
 define reset_feedback reset_feedback
@@ -765,6 +773,15 @@ define inline_script show_stim_psycho_backend
 			(var.actual_total_duration, var.average_total_duration) = calcDuration(l_letter_time, l_total_time)
 	__end__
 
+define sequence training
+	set flush_keyboard yes
+	set description "Runs a number of items in sequence"
+	run training_instructions always
+	run reset_statistics always
+	run reset_feedback always
+	run training_laps_loop always
+	run give_feedback always
+
 define loop training_block_loop
 	set source table
 	set repeat 10
@@ -800,15 +817,6 @@ define sequence training_laps_sequence
 	set description "Runs a number of items in sequence"
 	run lap_info_text always
 	run training_block_loop always
-
-define sequence training_sequence
-	set flush_keyboard yes
-	set description "Runs a number of items in sequence"
-	run training_instructions always
-	run reset_statistics always
-	run reset_feedback always
-	run training_laps_loop always
-	run give_feedback always
 
 define sequence trial_sequence
 	set flush_keyboard yes
