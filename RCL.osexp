@@ -40,7 +40,7 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = "1.1.1"
+	var.program_version = "1.2"
 	
 	""" 
 	GitHub 		
@@ -50,8 +50,22 @@ define inline_script Version
 	
 	
 	--- Change Log ---
+	1.2
+		- Auswahl der Programm-Modi verändert
+		-- Dokumentation unter https://github.com/PsychoProjects/RCL/wiki/Programmablauf
+		-- Vortest und Nachtest aufgenommen
+		--- Um im Log-File mitprotokollieren zu können, ob es sich um einen Pre-Test oder einen Nach-Test handelt, muss dies explizit angegeben werden können
+		--- Daher werden jetz Vor- und Nach-Test zur Auswahl angeboten
+		--- Dadurch wird jetz im Logfile festgehalten, ob es sich um den Pre-test oder den Nach-Test handelt
+		-- Übungsphase als weiteren Modus aufgenommen
+		--- Damit kann der Proband sich erst einmal an das Programm und die Bedienung gewöhnen
+		--- Dies wird ebenfalls im Log-File protokolliert
+		-- Das Training ohne hervorgehobener Ziffer ist entfallen
+		- <intern> Die Rundenzahlen können jetzt für jeden Modus separat festgelegt werden (global_settings)
+		- <intern> Strings auf Unicode umgestellt
+		
 	1.1.1
-		- Dokumentation der Programmstruktur hinzugefügt: https://github.com/PsychoProjects/RCL/wiki/Programmstruktur
+		- <intern> Dokumentation der Programmstruktur hinzugefügt: https://github.com/PsychoProjects/RCL/wiki/Programmstruktur
 		
 	1.1	
 		- Die Eingabe der Ziffern kann in beliebiger Reihenfolge stattfinden
@@ -63,30 +77,30 @@ define inline_script Version
 		- Die Registrierung neuer Sprachen vereinfacht
 	
 	1.0.2
-		- Den Code etwas gesäubert / refactored
+		- <intern> Den Code etwas gesäubert / refactored
 		
 	1.0.1
-		- Anzeigeroutine für die UI-Texte zentralisiert
+		- <intern> Anzeigeroutine für die UI-Texte zentralisiert
 		
 	1.0 RC2
 		- Support für mehrsprachige Dialoge eingeführt. Die Sprache kann in den global_settings eingestellt werden.
 		-- aktuell werden Deutsch (Languages.DE) und Englisch (Languages.EN) unterstützt
-		- Programm vereinfacht, in dem unnötige Loops entfernt wurden
+		- <intern> Programm vereinfacht, in dem unnötige Loops entfernt wurden
 	
 	0.7 RC1
 		- Font-Size vergrößert, damit die Stimuli besser zu erkennen sind. 
 		-- https://github.com/AchimImKaff/RCL/issues/2#issue-377982251
 		-- Außerdem sollte damit die Größe der Stimuli bei allen Back-Ends gleich sein
 		-- Die Definition des Font-Size findet sich im global_settings_script --> [fontSize]
-		- Die Anzahl der Durchläufe wird jetzt ebenfalls im global_settings_script festgelegt --> [numOfTrials]
-		- Die durchschnittlichen Anzeigedauern (average_letter_duration, average_total_duration) werden mit in die Log-Datei geschrieben.
+		- <intern> Die Anzahl der Durchläufe wird jetzt ebenfalls im global_settings_script festgelegt --> [numOfTrials]
+		- <intern> Die durchschnittlichen Anzeigedauern (average_letter_duration, average_total_duration) werden mit in die Log-Datei geschrieben.
 	
 	0.6
 		- Bugfix: die Preparation-Section wird offenbar unabhängig von der Bedingung immer ausgeführt. 
 		-- Dies führte seltsamerweise bei Back-Ends <> Psycho zum Umschalten des Grafikmodus und der Anzeige-Screen verschwand im Hintergrund.
 		-- Daher wird dort jetzt am Anfang das Backend geprüft (if isPsychoBackend == 0|1)
 		- Da 15ms offenbar für viele Monitore zu kurz ist, wurde die Anzeigedauer für die Buchstaben auf 33ms (2 Frames) angepasst und ISI auf 66ms
-		- Minor Bugfix: Fixation-point: es lagen zwei FP übereinander (weiß und schwarz)
+		- <intern> Minor Bugfix: Fixation-point: es lagen zwei FP übereinander (weiß und schwarz)
 	
 	0.5
 		- Unterstützung auch für andere Backends als PsychoPy eingeführt (show_stim_any_backend, show_stim_psycho_backend)
@@ -198,15 +212,22 @@ define inline_script evaluate_choice
 	# Evaluate the choice
 	assert(var.chosen_mode != "no") # a choice has to be made
 	
-	if var.chosen_mode == curLanguage.choice_of_mode_text_experiment():
-		var.isTraining = 0
-	else:
-		var.isTraining = 1
+	if var.chosen_mode == curLanguage.choice_of_mode_text_experiment_pre_test():
+		var.isPreTest = 1
+		var.num_of_laps = num_of_laps_experiment	 	
 		
+	if var.chosen_mode == curLanguage.choice_of_mode_text_experiment_post_test():
+		var.isPostTest = 1
+		var.num_of_laps = num_of_laps_experiment	 	
+	
+	if var.chosen_mode == curLanguage.choice_of_mode_text_excercise():
+		var.isExcercise = 1
+		var.num_of_laps = num_of_laps_excercise	 	
+	
 	if var.chosen_mode == curLanguage.choice_of_mode_text_training_salient():
+		var.isTraining = 1
 		var.isSalient = 1
-	else:
-		var.isSalient = 0
+		var.num_of_laps = num_of_laps_training 	
 	
 	# There are two ways to create the stimuli implemented in this program depending on the chosen backend
 	if var.canvas_backend == "psycho":
@@ -218,7 +239,13 @@ define inline_script evaluate_choice
 	del var.com_caption
 	del var.com_selection 
 	__end__
-	set _prepare ""
+	___prepare__
+	var.isTraining = 0
+	var.isPreTest = 0
+	var.isPostTest = 0
+	var.isSalient = 0
+	var.isExcercise = 0
+	__end__
 
 define sequence experiment
 	set flush_keyboard yes
@@ -300,7 +327,11 @@ define inline_script global_settings
 	
 	# Just a workaround: standard os-diaglogs can't handle function calls. Therefore we put the strings for the choice_of_mode dialog into global variables.
 	var.com_caption = curLanguage.choice_of_mode_text_caption()
-	var.com_selection = curLanguage.choice_of_mode_text_experiment() + "\n" + curLanguage.choice_of_mode_text_training_salient() + "\n" + curLanguage.choice_of_mode_text_training_nonsalient()
+	var.com_selection = u"{0}\n{1}\n{2}\n{3}".format(
+		curLanguage.choice_of_mode_text_excercise(), 
+		curLanguage.choice_of_mode_text_experiment_pre_test(),
+		curLanguage.choice_of_mode_text_training_salient(), 
+		curLanguage.choice_of_mode_text_experiment_post_test())
 	__end__
 	___prepare__
 	""" 
@@ -318,7 +349,10 @@ define inline_script global_settings
 	var.isi = 66 	# inter sitmulus interval 
 	
 	# number of laps and trials used in experiment and training
-	var.num_of_laps = 9	 	# each lap has 10 trials
+	# each lap has 10 trials
+	num_of_laps_experiment = 9	 # 90 Stumulussequenzen entsprechen dem Aufbau bei Raymond & Shapiro	
+	num_of_laps_excercise = 3	 	
+	num_of_laps_training = 5	 	
 	
 	# Position of T2 in relation to T2 according to experiment 1
 	# SOA = stimulus onset asynchrony 
@@ -377,6 +411,12 @@ define inline_script helper_functions
 			s, t = keyboard.get_key()
 			return(s)
 	
+	""" char2int
+		converts a character to an integer value 
+		in: c -> char
+		return: -> int 
+			the value represented by c as integer ('1' -> 1)
+	"""
 	def char2int(c):
 		return(ord(c)-ord('0'))
 	__end__
@@ -391,7 +431,7 @@ define inline_script language_english
 			print("Language EN")
 	
 		def experiment_instructions_text(self):
-			return("""
+			return(u"""
 				INSTUCTIONS
 				
 				You will see a series of letters and two digts at randomly chosen positions.
@@ -402,7 +442,7 @@ define inline_script language_english
 				""")
 			
 		def training_instructions_text(self):
-			return("""
+			return(u"""
 				INSTUCTIONS
 				
 				You will see a series of letters and two digts at randomly chosen positions.
@@ -414,32 +454,38 @@ define inline_script language_english
 				""")
 		
 		def experiment_lap_info_text(self):
-			return("""
+			return(u"""
 				Lap {0} of {1}
 				
 				Press any key to continue...
 				""")
 	
 		def choice_of_mode_text_caption(self):
-			return("Please select")
+			return(u"Please select")
 			
-		def choice_of_mode_text_experiment(self):
-			return("Experiment")
+		def choice_of_mode_text_experiment_pre_test(self):
+			return(u"Experiment (pre-test)")
+			
+		def choice_of_mode_text_experiment_post_test(self):
+			return(u"Experiment (post_test)")
+	
+		def choice_of_mode_text_excercise(self):
+			return(u"Excercise")
 			
 		def choice_of_mode_text_training_salient(self):
-			return("Training with salient digit")
+			return(u"Training with salient digit")
 			
 		def choice_of_mode_text_training_nonsalient(self):
-			return("Training with non-salient digit")
+			return(u"Training with non-salient digit")
 			
 		def ask_for_T1_text(self):
-			return("Please type the digits")
+			return(u"Please type the digits")
 			
 		def ask_for_T2_text(self):
-			return("And the other digit?")
+			return(u"And the other digit?")
 			
 		def feedback_text(self):
-			return("""
+			return(u"""
 				End of block
 				Your accuracy was {0}%
 				
@@ -447,7 +493,7 @@ define inline_script language_english
 				""")
 				
 		def end_text(self):
-			return("Press any key to finish...")
+			return(u"Press any key to finish...")
 	__end__
 
 define inline_script language_german
@@ -459,7 +505,7 @@ define inline_script language_german
 			print("Language DE")
 	
 		def experiment_instructions_text(self):
-			return("""
+			return(u"""
 				ANLEITUNG
 				
 				In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. 
@@ -470,7 +516,7 @@ define inline_script language_german
 				""")
 				
 		def training_instructions_text(self):
-			return("""
+			return(u"""
 				TRAININGS-ANLEITUNG
 				
 				In einer Serie von Buchstaben werden zwei Ziffern an zufällig ausgewählten Positionen gezeigt. 
@@ -482,32 +528,38 @@ define inline_script language_german
 				""")
 		
 		def choice_of_mode_text_caption(self):
-			return("Bitte wählen")
+			return(u"Bitte wählen")
 			
 		def experiment_lap_info_text(self):
-			return("""
+			return(u"""
 				Runde {0} von {1}
 				
 				Weiter mit beliebiger Taste...
 				""")
 	
-		def choice_of_mode_text_experiment(self):
-			return("Experiment")
+		def choice_of_mode_text_experiment_pre_test(self):
+			return(u"Experiment (Vor-Test)")
 			
+		def choice_of_mode_text_experiment_post_test(self):
+			return(u"Experiment (Nach-Test)")
+	
+		def choice_of_mode_text_excercise(self):
+			return(u"Übungsdurchgang")
+	
 		def choice_of_mode_text_training_salient(self):
-			return("Training mit hervorgehobener Ziffer")
+			return(u"Training mit hervorgehobener Ziffer")
 			
 		def choice_of_mode_text_training_nonsalient(self):
-			return("Training ohne hervorgehobener Ziffer")
+			return(u"Training ohne hervorgehobener Ziffer")
 			
 		def ask_for_T1_text(self):
-			return("Bitte gib ein, welche Ziffern du gesehen hast:")
+			return(u"Bitte gib ein, welche Ziffern du gesehen hast:")
 			
 		def ask_for_T2_text(self):
-			return("Und welche Ziffer noch?")
+			return(u"Und welche Ziffer noch?")
 			
 		def feedback_text(self):
-			return("""
+			return(u"""
 				Ende des Blocks
 				Die Trefferquote lag bei {0}%
 				
@@ -515,7 +567,7 @@ define inline_script language_german
 				""")
 				
 		def end_text(self):
-			return("Zum Beenden eine beliebige Taste drücken...")
+			return(u"Zum Beenden eine beliebige Taste drücken...")
 	__end__
 
 define sequence language_settings
@@ -547,47 +599,54 @@ define inline_script language_support
 		NONE = 0
 		DE = 1
 		EN = 2
+		IT = 3
 	
 	# base class for language support classes	
 	class ILanguageSupport:
 		def __init__(self):
-			pass
+			print(u"""Missing Language""")
 			
 		def font_size(self):
 			return(24)
 				
 		def experiment_instructions_text(self):
-			return("""Missing experiment_instructions_text""")
+			return(u"""Missing experiment_instructions_text""")
 				
 		def training_instructions_text(self):
-			return("""Missing training_instructions_text""")
+			return(u"""Missing training_instructions_text""")
 			
 		def experiment_lap_info_text(self):
-			return("""Missing experiment_lap_info_text""")
+			return(u"""Missing experiment_lap_info_text""")
 		
 		def choice_of_mode_text_caption(self):
-			return("Missing choice_of_mode_text_caption")
+			return(u"Missing choice_of_mode_text_caption")
 			
-		def choice_of_mode_text_experiment(self):
-			return("Missing choice_of_mode_text_experiment")
+		def choice_of_mode_text_experiment_pre_test(self):
+			return(u"Missing choice_of_mode_text_experiment_pre_test")
+			
+		def choice_of_mode_text_experiment_post_test(self):
+			return(u"Missing choice_of_mode_text_experiment_post_test")
+	
+		def choice_of_mode_text_excercise(self):
+			return(u"Missing choice_of_mode_text_excercise")
 			
 		def choice_of_mode_text_training_salient(self):
-			return("Missing choice_of_mode_text_training_salient")
+			return(u"Missing choice_of_mode_text_training_salient")
 			
 		def choice_of_mode_text_training_nonsalient(self):
-			return("Missing choice_of_mode_text_training_nonsalient")
+			return(u"Missing choice_of_mode_text_training_nonsalient")
 			
 		def ask_for_T1_text(self):
-			return("Missing ask_for_T1_text")
+			return(u"Missing ask_for_T1_text")
 			
 		def ask_for_T2_text(self):
-			return("Missing ask_for_T2_text")
+			return(u"Missing ask_for_T2_text")
 			
 		def feedback_text(self):
-			return("Missing feedback_text")
+			return(u"Missing feedback_text")
 				
 		def end_text(self):
-			return("Missing end_text")
+			return(u"Missing end_text")
 	
 	class LanguageFactory:
 		__languageInstance = None
