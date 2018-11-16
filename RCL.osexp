@@ -350,7 +350,7 @@ define inline_script global_settings
 	
 	# number of laps and trials used in experiment and training
 	# each lap has 10 trials
-	num_of_laps_experiment = 9	 # 90 Stumulussequenzen entsprechen dem Aufbau bei Raymond & Shapiro	
+	num_of_laps_experiment = 9	 # 90 stimulus sequences corresponding to Raymond & Shapiro	
 	num_of_laps_excercise = 3	 	
 	num_of_laps_training = 5	 	
 	
