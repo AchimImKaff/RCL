@@ -26,7 +26,7 @@ set font_size 32
 set font_italic no
 set font_family mono
 set font_bold no
-set experiment_path "C:/Users/Lenovo/Documents/OpenSesame/RCL"
+set experiment_path "D:/User/OpenSesameProjects/RCL"
 set disable_garbage_collection yes
 set description "A template containing a practice and an experimental phase"
 set coordinates uniform
@@ -40,7 +40,7 @@ set background grey
 define inline_script Version
 	set description "Executes Python code"
 	___run__
-	var.program_version = "1.2.1"
+	var.program_version = "1.3"
 	
 	""" 
 	GitHub 		
@@ -48,8 +48,10 @@ define inline_script Version
 		Source:			https://github.com/PsychoProjects/RCL/blob/master/RCL.osexp
 		Dokumentation:	https://github.com/PsychoProjects/RCL/wiki
 	
-	
 	--- Change Log ---
+	1.3
+		- Die Sprache wird jetzt beim Programmstart abgefragt
+		
 	1.2.1
 		- Es wird jetzt mitprotokolliert, welche Ziffern der Proband eingegeben hat und ob diese in (T1,T2) enthalten sind
 		
@@ -256,6 +258,19 @@ define inline_script evaluate_choice
 	var.isExcercise = 0
 	__end__
 
+define inline_script evaluate_language_selection
+	set description "Executes Python code"
+	___run__
+	del(var.language_options) # not needed anymore
+	
+	for language in LanguageFactory():
+		if var.selected_language == language.language_name():
+			var.dialog_language = language.language_id()
+	
+	assert(not var.dialog_language is None)
+	__end__
+	set _prepare ""
+
 define sequence experiment
 	set flush_keyboard yes
 	set description "A sequence containing a single block of trials followed by feedback to the participant"
@@ -346,12 +361,6 @@ define inline_script global_settings
 	""" 
 		global settings for experiment and training 
 	"""
-	# setting UI language
-	# Currently supported languages are:
-	#  DE: German
-	#  EN: English (US)
-	var.dialog_language = Languages.DE
-	
 	# Duration that letters are shown 
 	# 	it may be that they must be adjusted to a value compatible with refresh rate of the monitor
 	var.letter_dur = 33
@@ -360,7 +369,7 @@ define inline_script global_settings
 	# number of laps and trials used in experiment and training
 	# each lap has 10 trials
 	num_of_laps_experiment = 9	 # 90 stimulus sequences corresponding to Raymond & Shapiro	
-	num_of_laps_excercise = 3	 	
+	num_of_laps_excercise = 1	 	
 	num_of_laps_training = 5	 	
 	
 	# Position of T2 in relation to T2 according to experiment 1
@@ -437,8 +446,14 @@ define inline_script language_english
 	___prepare__
 	class EnglishLanguage(ILanguageSupport):
 		def __init__(self):
-			print("Language EN")
+			pass
+			
+		def language_id(self):
+			return(Languages.EN)
 	
+		def language_name(self):
+			return(u"English")
+			
 		def experiment_instructions_text(self):
 			return(u"""
 				INSTUCTIONS
@@ -511,8 +526,14 @@ define inline_script language_german
 	___prepare__
 	class GermanLanguage(ILanguageSupport):
 		def __init__(self):
-			print("Language DE")
+			pass
 	
+		def language_id(self):
+			return(Languages.DE)
+			
+		def language_name(self):
+			return(u"Deutsch")
+			
 		def experiment_instructions_text(self):
 			return(u"""
 				ANLEITUNG
@@ -579,12 +600,27 @@ define inline_script language_german
 			return(u"Zum Beenden eine beliebige Taste drücken...")
 	__end__
 
+define inline_script language_selection_string
+	set description "Executes Python code"
+	___run__
+	var.language_options = "" # string use to show language selection options. 
+	
+	for language in LanguageFactory():
+		if var.language_options != "":
+			var.language_options += "\n"
+		var.language_options += language.language_name()
+	__end__
+	set _prepare ""
+
 define sequence language_settings
 	set flush_keyboard yes
 	set description "Runs a number of items in sequence"
 	run language_support always
 	run language_german always
 	run language_english always
+	run language_selection_string always
+	run select_language always
+	run evaluate_language_selection always
 
 define inline_script language_support
 	set description "Executes Python code"
@@ -608,12 +644,17 @@ define inline_script language_support
 		NONE = 0
 		DE = 1
 		EN = 2
-		IT = 3
 	
 	# base class for language support classes	
 	class ILanguageSupport:
 		def __init__(self):
 			print(u"""Missing Language""")
+			
+		def language_id(self):
+			return(Languages.NONE)
+			
+		def language_name(self):
+			return(u"None")
 			
 		def font_size(self):
 			return(24)
@@ -658,22 +699,31 @@ define inline_script language_support
 			return(u"Missing end_text")
 	
 	class LanguageFactory:
-		__languageInstance = None
 		__languageList = {}
+		__iter = 0
 		
 		def __init__(self):
-			self.__register(Languages.DE, GermanLanguage)
-			self.__register(Languages.EN, EnglishLanguage)
+			# register new languages here
+			self.__register(GermanLanguage())
+			self.__register(EnglishLanguage())
+		
+		def __iter__(self):
+			__iter = 0
+			return(self)
 			
-		def __register(self, languageID, language_class):
-			self.__languageList[languageID] = language_class
+		def next(self):
+			if self.__iter >= len(LanguageFactory.__languageList.keys()):
+				raise StopIteration
+			else:
+				v = LanguageFactory.__languageList.values()[self.__iter]
+				self.__iter += 1
+			return(v)
+			
+		def __register(self, language_obj):
+			LanguageFactory.__languageList[language_obj.language_id()] = language_obj
 			
 		def language(self, languageID = Languages.DE):
-			if self.__languageInstance is None:
-				language_class = self.__languageList[languageID]
-				self.__languageInstance = language_class()
-				
-			return(self.__languageInstance)
+			return(LanguageFactory.__languageList[languageID])
 	__end__
 
 define inline_script lap_info_text
@@ -721,6 +771,20 @@ define inline_script reset_statistics
 	var.count_loops = 0
 	__end__
 	set _prepare ""
+
+define form_multiple_choice select_language
+	set timeout infinite
+	set spacing 10
+	set question "Select a language"
+	set options "[language_options]"
+	set margins "50;50;50;50"
+	set form_var selected_language
+	set form_title "RCL-Experiment Version [program_version]"
+	set description "A simple multiple choice item"
+	set button_text Ok
+	set allow_multiple no
+	set advance_immediately yes
+	set _theme gray
 
 define inline_script show_stim_any_backend
 	set description "Executes Python code"
