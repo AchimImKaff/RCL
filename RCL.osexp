@@ -645,6 +645,35 @@ define inline_script language_support
 		DE = 1
 		EN = 2
 	
+	# Factory class to create language instances
+	class LanguageFactory:
+		__languageList = {}
+		__iter = 0
+		
+		def __init__(self):
+			# register new languages here
+			self.__register(GermanLanguage())
+			self.__register(EnglishLanguage())
+		
+		def __iter__(self):
+			__iter = 0
+			return(self)
+			
+		def next(self):
+			if self.__iter >= len(LanguageFactory.__languageList.keys()):
+				raise StopIteration
+			else:
+				v = LanguageFactory.__languageList.values()[self.__iter]
+				self.__iter += 1
+			return(v)
+			
+		def __register(self, language_obj):
+			LanguageFactory.__languageList[language_obj.language_id()] = language_obj
+			
+		def language(self, languageID = Languages.DE):
+			return(LanguageFactory.__languageList[languageID])
+	
+	
 	# base class for language support classes	
 	class ILanguageSupport:
 		def __init__(self):
@@ -697,33 +726,6 @@ define inline_script language_support
 				
 		def end_text(self):
 			return(u"Missing end_text")
-	
-	class LanguageFactory:
-		__languageList = {}
-		__iter = 0
-		
-		def __init__(self):
-			# register new languages here
-			self.__register(GermanLanguage())
-			self.__register(EnglishLanguage())
-		
-		def __iter__(self):
-			__iter = 0
-			return(self)
-			
-		def next(self):
-			if self.__iter >= len(LanguageFactory.__languageList.keys()):
-				raise StopIteration
-			else:
-				v = LanguageFactory.__languageList.values()[self.__iter]
-				self.__iter += 1
-			return(v)
-			
-		def __register(self, language_obj):
-			LanguageFactory.__languageList[language_obj.language_id()] = language_obj
-			
-		def language(self, languageID = Languages.DE):
-			return(LanguageFactory.__languageList[languageID])
 	__end__
 
 define inline_script lap_info_text
