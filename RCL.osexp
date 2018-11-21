@@ -624,7 +624,11 @@ define sequence language_settings
 
 define inline_script language_support
 	set description "Executes Python code"
-	set _run ""
+	___run__
+	# register all UI languages
+	LanguageFactory.register(GermanLanguage())
+	LanguageFactory.register(EnglishLanguage())
+	__end__
 	___prepare__
 	"""
 		Module for handling UI language selection.
@@ -647,32 +651,31 @@ define inline_script language_support
 	
 	# Factory class to create language instances
 	class LanguageFactory:
-		__languageList = {}
-		__iter = 0
+		__languageDict = {}
 		
 		def __init__(self):
-			# register new languages here
-			self.__register(GermanLanguage())
-			self.__register(EnglishLanguage())
+			pass
+			# nothing to to
 		
+		@classmethod 
+		def register(self, language_obj):
+			LanguageFactory.__languageDict[language_obj.language_id()] = language_obj
+	
+		def language(self, languageID = Languages.DE):
+			return(LanguageFactory.__languageDict[languageID])
+	
 		def __iter__(self):
-			__iter = 0
+			self.__iter = 0
 			return(self)
 			
 		def next(self):
-			if self.__iter >= len(LanguageFactory.__languageList.keys()):
+			if self.__iter >= len(LanguageFactory.__languageDict.keys()):
 				raise StopIteration
 			else:
-				v = LanguageFactory.__languageList.values()[self.__iter]
+				v = LanguageFactory.__languageDict.values()[self.__iter]
 				self.__iter += 1
-			return(v)
-			
-		def __register(self, language_obj):
-			LanguageFactory.__languageList[language_obj.language_id()] = language_obj
-			
-		def language(self, languageID = Languages.DE):
-			return(LanguageFactory.__languageList[languageID])
-	
+				return(v)
+		
 	
 	# base class for language support classes	
 	class ILanguageSupport:
