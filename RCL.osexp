@@ -637,7 +637,7 @@ define inline_script language_support
 		1. add a new language selector to the Languages enum (e.g. IT = 3)
 		2. add a new class language_<language> derived from ILanguageSupport and overwrite the text-methods. 
 			Probably the easiest way is to copy an existing class like language_german.
-		3. register the new language in LanguageFactory.__init__()
+		3. register the new language in rhe Run-section of this script
 		
 		See also https://github.com/PsychoProjects/RCL/wiki/Anlegen-einer-neuen-Sprache
 	"""
